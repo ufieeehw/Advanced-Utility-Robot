@@ -23,7 +23,7 @@ rosrun MILAUR_controller controller.py
 rosrun MILAUR_navigation navigation.py
 ```
 
-Note: navigator.py may not yet be implemented
+'''Note: navigator.py may not yet be implemented
 
 # TODO
 * Add a roslaunch
