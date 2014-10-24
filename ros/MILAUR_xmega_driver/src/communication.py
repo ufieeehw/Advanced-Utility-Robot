@@ -186,9 +186,6 @@ class MILAUR_Communicator(Communicator):
             # 'poll_imu': 0x01,
             'robot_start': 0x02,
             'motors': 0x80,
-
-        })
-        self.data_messages.update({
             'debug': 0x40,
         })
 
