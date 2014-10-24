@@ -20,7 +20,7 @@ rosrun MILAUR_xmega_driver communication.py
 
 rosrun MILAUR_controller controller.py
 
-rosrun MILAUR_navigation navigator.py
+rosrun MILAUR_navigation navigation.py
 ```
 
 Note: navigator.py may not yet be implemented
