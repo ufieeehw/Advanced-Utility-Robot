@@ -14,6 +14,7 @@ from std_msgs.msg import Header, Int16, Bool, String, Float64
 from geometry_msgs.msg import Pose, PoseStamped, Twist, TwistStamped, Vector3
 from MILAUR_xmega_driver.msg import XMega_Message
 
+
 def print_in(f):
     '''Shitty decorator for printing function business'''
     print("Defining " + f.func_name)
@@ -102,7 +103,7 @@ class Controller(object):
             [-100,   0] = backwards
             [0,    100] = forwards
 
-            Table:
+        Table:
             | Left Direction | Right Direction | Resultant Motion | Angular Direction |
             |________________|_________________|__________________|___________________|
             | Forward        | Forward         | Forward          | None              |
@@ -113,8 +114,10 @@ class Controller(object):
         '''
         left_wheel_rectified = np.clip(left_wheel, -100, 100)
         right_wheel_rectified = np.clip(right_wheel, -100, 100)
-        left_wheel_char = chr(left_wheel_rectified + 256)
-        right_wheel_char = chr(right_wheel_rectified + 256)
+        if left_wheel_rectified < 100:
+            left_wheel_char = chr(left_wheel_rectified + 256)
+        if right_wheel_rectified < 100:
+            right_wheel_char = chr(right_wheel_rectified + 256)
 
         msg = XMega_Message(
             type=String('motors'),
