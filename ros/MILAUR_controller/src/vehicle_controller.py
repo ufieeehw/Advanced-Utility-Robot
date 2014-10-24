@@ -10,7 +10,7 @@ import tf
 from tf import transformations as tf_trans
 import rospy
 ## Ros msgs
-from std_msgs.msg import Header, Int16, Bool, String
+from std_msgs.msg import Header, Int16, Bool, String, Float64
 from geometry_msgs.msg import Pose, PoseStamped, Twist, TwistStamped, Vector3
 from MILAUR_xmega_driver.msg import XMega_Message
 
@@ -32,7 +32,7 @@ def xyzw_array(quaternion):
 
 
 class Controller(object):
-    _targ_angle_hist_length = 25
+    _targ_angle_hist_length = 25  # Length of deque for derivative and integral PID terms
 
     def __init__(self):
         '''This is the controller object for the MIL Advanced 
@@ -49,51 +49,67 @@ class Controller(object):
         rospy.init_node('vehicle_controller')
         self.targ_angle_history = deque()
         self.target_angle = 0
-        self.xmega_pub = rospy.Publisher('MILAUR/send_xmega_msg', XMega_Message, queue_size=1, latch=True)
+        self.angle_error_sub = rospy.Subscriber('MILAUR/angle_error', Float64, self.got_target_angle)
+        self.xmega_pub = rospy.Publisher('MILAUR/send_xmega_msg', XMega_Message, queue_size=10)
+        rospy.sleep(2)  # Sleep while waiting for the publisher to make things happen
         self.xmega_pub.publish(
             XMega_Message(
                 type=String('robot_start'),
                 empty_flag=Bool(True),
             )
         )
-        while(1):
-            try:
-                if len(self.targ_angle_history) < self._targ_angle_hist_length//2:
-                    self.xmega_pub.publish(
-                       XMega_Message(
-                        type=String('motors'),
-                        data=String('\x00\x00'),
-                        empty_flag=Bool(False),
-                        )
-                    )
-                    continue
-            except rospy.ROSInterruptException:
-                break
-        
-            # PID Control
-            # Angle error
-            angle_error = self.target_angle
+
+    def run(self):
+        '''Main loop of the controller
+        Determines how to control the vehicle based on the published angle error
+
+        Where +X defines the front of the robot...
+                              +X
+               Negative Angles | Positive Angles
+        (-pi/2)________________|________________ (pi/2)
+                               |
+                          (-pi or pi)
+        '''
+        # If we't not ready, continually send a motor stop message
+        if len(self.targ_angle_history) < self._targ_angle_hist_length//2:
+            self.send_wheel_vel(0, 0)
+            d = rospy.Duration(2, 0)
+            rospy.sleep(d)
+            return
+        # PID Control
+        # Angle error
+        angle_error = self.target_angle
+        if angle_error > np.radians(5):
             # Approximate angular velocity
             angular_velocity = np.average(np.diff(self.targ_angle_history))
             angular_integral = np.trapz(self.targ_angle_history)
 
-            p_gain = 2.0
-            d_gain = 1.0
-            i_gain = 0.2
+            # PID Gains, play with these if the robot jitters
+            p_gain = 0.7
+            d_gain = 0.3
+            i_gain = 0.1
             correction_const = 1.0
+            # A positive angle error should induce a positive turn, and the opposite
             tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
-
             desired_torque = correction_const * tau
-
-            # Wait a bit
-            rospy.sleep(0.08)
+        else:
+            desired_torque = 0
+        self.send_wheel_vel(desired_torque, -desired_torque)
 
     def send_wheel_vel(self, left_wheel, right_wheel):
         '''Send wheel velocities to XMega
         Output ranges:
             [-100,   0] = backwards
             [0,    100] = forwards
-        1st byte is left motor, 2nd byte is right motor
+
+            Table:
+            | Left Direction | Right Direction | Resultant Motion | Angular Direction |
+            |________________|_________________|__________________|___________________|
+            | Forward        | Forward         | Forward          | None              |
+            | Forward        | Reverse         | Turn Right       | Positive          |
+            | Reverse        | Forward         | Turn Left        | Negative          |
+
+            1st byte is left motor, 2nd byte is right motor
         '''
         left_wheel_rectified = np.clip(left_wheel, -100, 100)
         right_wheel_rectified = np.clip(right_wheel, -100, 100)
@@ -104,11 +120,13 @@ class Controller(object):
             type=String('motors'),
             data=String(left_wheel_char + right_wheel_char),
         )
-
         self.xmega_pub.publish(msg)
 
     def got_target_angle(self, msg):
-        '''Target angle should be published at a constant rate'''
+        '''Target angle should be published at a constant rate
+        These angles should be on the interval [-pi, pi]
+        The controller will attempt to rotate the robot until the angle error is zero
+        '''
         target_angle = msg.data
         self.target_angle = target_angle
         if len(self.targ_angle_history) > self._targ_angle_hist_length:
@@ -117,8 +135,12 @@ class Controller(object):
 
 
 if __name__=='__main__':
-    try:
-        controller = Controller()
-    except rospy.ROSInterruptException:
-        pass
+    controller = Controller()
+    while(not rospy.is_shutdown()):
+        try:
+            controller.run()
+            # Wait a bit
+            rospy.sleep(0.2)
+        except rospy.ROSInterruptException:
+            exit()
         
