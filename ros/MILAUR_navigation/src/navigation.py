@@ -14,11 +14,19 @@ from sensor_msgs.msg import LaserScan
 
 
 class Navigator(object):
+    _min_angle = np.radians(-270/2)
+    _max_angle = np.radians(270/2)
+    _avoidance_range = 4
+
     def __init__(self):
         rospy.init_node('navigation')
         self.lidar_listener = rospy.Subscriber('/scan', LaserScan, self.got_lidar_data)
         self.direction_pub = rospy.Publisher('MILAUR/angle_error', Float64)
-        #my own stuff
+
+        rospy.set_param("/hokuyo_node/min_ang", self._min_angle)
+        rospy.set_param("/hokuyo_node/max_ang", self._max_angle)
+
+        # (Lucas/Madison) my own stuff
         self.totalLength = len(ranges)
         self.halfLength = totalLength/2
         self.sumLeft = 0
@@ -59,12 +67,10 @@ class Navigator(object):
     def get_ranges_by_angles(self, min_angle, max_angle, ranges):
         # Index to angle conversion
         index_angle = (self.angle_max - self.angle_min) / self.angle_increment
-
         start = int(min_angle * (1 / index_angle))
         end = int(max_angle * (1 / index_angle))
         return ranges[start:end - 1]
 
-            
     def getSums(self):
         self.sumLeft = self.sumRight = 0
         for x in self.ranges[0:self.halfLength]:
@@ -85,23 +91,11 @@ class Navigator(object):
             else:
                 return False # Don't turn because we didn't find any obstacles
              
-    def turn(self):
-        getSums()
-        if self.sumLeft > self.sumRight:
-            return right()
-        else:
-            return left()
-    
-    def right(self):
-        return 40
-        
-    def left(self):
-        return -40
-        
-    def getWhereToGo(self):
-        return self.whereToGo
-        print len(lidar_scan)
-    
+    def find_available_ranges(self, ranges):
+        groups = []
+        for index, _range in enumerate(ranges):
+            if _range > self._avoidance_range:
+                end = index
 
 if __name__=='__main__':
     navigator_node = Navigator()

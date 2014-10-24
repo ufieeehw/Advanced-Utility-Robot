@@ -79,7 +79,7 @@ class Communicator(object):
     def got_poll_msg(self, msg):
         '''Only supports 2 byte and empty messages right now!'''
         self.err_log("Got poll message of type ", msg.type.data)
-        if msg.empty_flag:
+        if msg.empty_flag.data:
             self.write_packet(msg.type.data)
         else:
             self.write_packet(msg.type.data, msg.data.data)
@@ -152,7 +152,8 @@ class Communicator(object):
             self.err_log("Writing as ", write_data)
             self.serial.write(chr(write_data))
             if data is not None:
-                for character in unicode(data, 'utf-8'):
+                print "Data, "
+                for character in data:
                     self.err_log("writing character ", character)
                     self.serial.write(character)
             else:
