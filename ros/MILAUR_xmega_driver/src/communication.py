@@ -18,7 +18,7 @@ import tf
 from std_msgs.msg import Header, Float32, Float64, String
 from geometry_msgs.msg import Point, PointStamped, PoseStamped, Pose, Quaternion, Vector3
 from sensor_msgs.msg import Imu
-from ieee2015_xmega_driver.msg import XMega_Message
+from MILAUR_xmega_driver.msg import XMega_Message
 
 class Communicator(object):
     def __init__(self, port, baud_rate, verbose=True):
@@ -52,7 +52,7 @@ class Communicator(object):
         # ROS Setup
         rospy.init_node('XMega_Connector')
         # Messages being sent from ROS to the XMega
-        self.send_msg_sub = rospy.Subscriber('robot/send_xmega_msg', String, self.got_poll_msg)
+        self.send_msg_sub = rospy.Subscriber('MILAUR/send_xmega_msg', XMega_Message, self.got_poll_msg)
 
         self.serial = serial.Serial(port, baud_rate)
         # Defines which action function to call on the received data
@@ -82,8 +82,12 @@ class Communicator(object):
             print args
 
     def got_poll_msg(self, msg):
-        print "data", msg.data
-        self.write_packet(msg.data)
+        '''Only supports 2 byte and empty messages right now!'''
+        self.err_log("data ", msg.data)
+        if msg.empty_flag:
+            self.write_packet(msg.type.data)
+        else:
+            self.write_packet(msg.type.data, msg.data.data)
 
     def got_data_msg(self, msg):
         print "Data message:", msg.type, "Contents:", msg.data
@@ -119,8 +123,12 @@ class Communicator(object):
                     msg_data = None
                 else:
                     msg_data = self.serial.read(msg_length)
-                action_function = self.action_dict[msg_type]
-                action_function(msg_data)
+                if msg_type in self.action_dict.keys():
+
+                    action_function = self.action_dict[msg_type]
+                    action_function(msg_data)
+                else:
+                    self.err_log("No action fun for ", msg_type)
 
             # N-Byte Message
             elif msg_type in self.action_dict.keys():
@@ -141,34 +149,24 @@ class Communicator(object):
         Notes:
             type is _type because "type" is a python protected name
         '''
+        self.err_log("Processing message of type ", _type)
         if _type in self.poll_messages.keys():
             self.err_log("Write type recognized as a polling message")
             write_data = self.poll_messages[_type]
-            print write_data
             self.serial.write(str(unichr(write_data)))
-        elif _type in self.data_messages.keys():
-            self.err_log("Write type recognized as a data message")
+            if data is not None:
+                self.serial.write(str(unichr(data)))
         else:
             self.err_log("Write type not recognized")
 
 
-class IEEE_Communicator(Communicator):
+class MILAUR_Communicator(Communicator):
     def __init__(self, port='/dev/ttyUSB0', baud_rate=256000):
-        '''IEEE Communicator sub-class of the broader XMega Communicator class
+        '''MILAUR sub-class of the broader XMega Communicator class
         XMega Sensor Manifest:
-            - IMU (9DOF) - 12 bytes (only using 6 DOF) [An IMU is an intertial measurement unit]
-            - Light Sensor
-            - 4x: Encoders/Odometry
-            - 1-2x: Solenoid State (XMega will hold this internally)
-            - 1-2x: On/Kill Switches
-            - 1-2x: Battery Monitors
-
+            - None
         XMega Actuator Manifest:
-            - 4x: Wheel Motors (Set Motor Velocities)
-            - Unk: Non-Wheel control motors (Set torque)
-            - 4-5x: Servos (Arm and a few places, set angle)
-            - 4x: Status LED's (Toggle)
-            - 1-2x: Solenoids (Go, no-go!)
+            - 2x: Wheel Motors (Set Motor Velocities)
         '''
         super(self.__class__, self).__init__(port, baud_rate)
 
@@ -184,7 +182,10 @@ class IEEE_Communicator(Communicator):
             0x40: self.got_test,
         })
         self.poll_messages.update({
-            'poll_imu': 0x01,
+            # 'poll_imu': 0x01,
+            'robot_start': 0x02,
+            'motors': 0x80,
+
         })
         self.data_messages.update({
             'debug': 0x40,
@@ -287,6 +288,6 @@ class IEEE_Communicator(Communicator):
 if __name__=='__main__':
     '''
     '''
-    Comms = IEEE_Communicator(port='/dev/ttyUSB0')
+    Comms = MILAUR_Communicator(port='/dev/ttyUSB0')
     Comms.read_packets()
     rospy.spin()
