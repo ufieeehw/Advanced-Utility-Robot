@@ -10,6 +10,7 @@
 #include "usart.h"
 #include "table.h"
 #include "meta.h"
+#include "towbot_motor_controller.h"
 
 //Quantum definitions (how many buffer operations per function call)
 #define BUFFER_ALLOWED  16
@@ -24,6 +25,7 @@ void init(){
   
   //do component initializations
   meta_init();  //initialize meta functions (should come first)
+  towBot_Init();  // initialize towbot functions (should not suck)
   
   //initialize communications
   initialize_usart();

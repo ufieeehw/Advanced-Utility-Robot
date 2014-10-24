@@ -31,7 +31,7 @@
 
 
 //DATA_2B_TYPE messages [0x80-0xAF]
-
+#define TOWBOT_TYPE	      0x80
 
 //DATA_NB_TYPE messages [0xC0-0xEF]
 
