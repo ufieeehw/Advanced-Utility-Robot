@@ -23,7 +23,7 @@ rosrun MILAUR_navigation navigation.py
 rosrun hokuyo_node hokuyo_node
 ```
 
-Note: navigator.py may not yet be implemented
+```Note: navigator.py may not yet be implemented
 
 # TODO
 * Add a roslaunch
