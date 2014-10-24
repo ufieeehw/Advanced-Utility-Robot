@@ -83,7 +83,7 @@ class Communicator(object):
 
     def got_poll_msg(self, msg):
         '''Only supports 2 byte and empty messages right now!'''
-        self.err_log("data ", msg.data)
+        self.err_log("Got poll message of type ", msg.type.data)
         if msg.empty_flag:
             self.write_packet(msg.type.data)
         else:
@@ -110,7 +110,9 @@ class Communicator(object):
 
         while True:
             # message_length = 0 # Bytes (Defaulted, indicated by message type)
-            msg_type = ord(self.serial.read(type_length))
+            shitty_type = self.serial.read(type_length)
+            self.err_log("shitty type ", shitty_type)
+            msg_type = ord(shitty_type)
             msg_byte_type = msg_type & type_mask
             b_error = (msg_type & error_mask) == error_mask
 
@@ -153,9 +155,15 @@ class Communicator(object):
         if _type in self.poll_messages.keys():
             self.err_log("Write type recognized as a polling message")
             write_data = self.poll_messages[_type]
-            self.serial.write(str(unichr(write_data)))
+            self.err_log("Writing as ", write_data)
+            self.serial.write(chr(write_data))
             if data is not None:
-                self.serial.write(str(unichr(data)))
+                for character in unicode(data, 'utf-8'):
+                    self.err_log("writing character ", character)
+                    self.serial.write(character)
+
+            else:
+                self.err_log("No other data to write")
         else:
             self.err_log("Write type not recognized")
 
@@ -198,73 +206,6 @@ class MILAUR_Communicator(Communicator):
         print "Recieved test!"
         if msg_data is not None:
             print "Data:", msg_data
-
-    def got_imu_reading(self, msg_data):
-        '''Handle data read from the IMU
-        The IMU we have is 9-DOF, meaning that it reads:
-            Linear acceleration in XYZ
-            Rotational velocity in XYZ
-            Gyroscope Readings in X and Y axis
-            Magnetometer/Compass readings around Z axis
-
-        We also found some spare IMUs that additionally read barometric altitude
-
-        IMU Message:
-            std_msgs/Header header
-            geometry_msgs/Quaternion orientation
-            float64[9] orientation_covariance
-            geometry_msgs/Vector3 angular_velocity
-            float64[9] angular_velocity_covariance
-            geometry_msgs/Vector3 linear_acceleration
-            float64[9] linear_acceleration_covariance
-        '''
-        # Where vel -> velocity, and acc -> acceleration
-        decomposition = {
-            'lin_acc_x': 0,
-            'lin_acc_y': 0,
-            'lin_acc_z': 0,
-            'ang_vel_x': 0,
-            'ang_vel_y': 0,
-            'ang_vel_z': 0,
-            'bearing': 0,
-            'barometric_altitude': 0,
-        }
-        angular_vel = (
-            decomposition['ang_vel_x'],
-            decomposition['ang_vel_y'],
-            decomposition['ang_vel_z'],
-        )
-        linear_acc = (
-            decomposition['lin_acc_x'],
-            decomposition['lin_acc_y'],
-            decomposition['lin_acc_z'],
-        )
-
-        orientation = tf_trans.quaternion_from_euler(0, 0, decomposition['bearing'])
-        IMU_msg = Imu(
-            header=Header(
-                stamp=rospy.Time.now(),
-                frame_id='/robot',
-            ),
-            orientation=Quaternion(*orientation), 
-            orientation_covariance=
-                [0.03**2, 0,       0,
-                 0,       0.03**2, 0,
-                 0,       0,       0.03**2,],
-            angular_velocity=Vector3(*angular_vel),
-            angular_velocity_covariance=
-                [0.03**2, 0,       0,
-                 0,       0.03**2, 0,
-                 0,       0,       0.03**2,],
-
-            linear_acceleration=Vector3(*linear_acc),
-            linear_acceleration_covariance=
-                [0.03**2, 0,       0,
-                 0,       0.03**2, 0,
-                 0,       0,       0.03**2,],
-        )
-
-        self.accel_data_pub()
 
     def towbot_nunchuck_echo(self, msg_data):
         '''Towbot nunchuck demo
