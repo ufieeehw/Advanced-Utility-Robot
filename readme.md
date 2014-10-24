@@ -14,13 +14,13 @@ This is the core codebase for the MIL advanced utility robot. It uses the jOS.h 
 
 # How to use
 
-```rosrun hokuyo_node hokuyo_node
+```rosrun MILAUR_xmega_driver communication.py
 
-rosrun MILAUR_xmega_driver communication.py
-
-rosrun MILAUR_controller controller.py
+rosrun MILAUR_controller vehicle_controller.py
 
 rosrun MILAUR_navigation navigation.py
+
+rosrun hokuyo_node hokuyo_node
 ```
 
 Note: navigator.py may not yet be implemented

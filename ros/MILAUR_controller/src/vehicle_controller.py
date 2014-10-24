@@ -112,16 +112,30 @@ class Controller(object):
 
             1st byte is left motor, 2nd byte is right motor
         '''
-        left_wheel_rectified = np.clip(left_wheel, -100, 100)
-        right_wheel_rectified = np.clip(right_wheel, -100, 100)
-        if left_wheel_rectified < 100:
-            left_wheel_char = chr(left_wheel_rectified + 256)
-        if right_wheel_rectified < 100:
-            right_wheel_char = chr(right_wheel_rectified + 256)
+        def rectify_wheel_power(value, _min, _max):
+            clamped = np.clip(value, _min, _max)
+            if clamped < 0:
+                return chr(clamped + 256)
+            else:
+                return chr(clamped)
 
+        # left_wheel_rectified = np.clip(left_wheel, -100, 100)
+        # right_wheel_rectified = np.clip(right_wheel, -100, 100)
+        left_wheel_char = rectify_wheel_power(left_wheel, -100, 100)
+        right_wheel_char = rectify_wheel_power(right_wheel, -100, 100)
+        # if left_wheel_rectified < 0:
+            # left_wheel_char = chr(left_wheel_rectified + 256)
+        # else:
+            # left_wheel_char  
+        # if right_wheel_rectified < 0:
+            # right_wheel_char = chr(right_wheel_rectified + 256)
+        # else:
+        message_data = left_wheel_char + right_wheel_char
+        print "Sending a message as ", message_data
         msg = XMega_Message(
             type=String('motors'),
-            data=String(left_wheel_char + right_wheel_char),
+            data=String(message_data),
+            empty_flag=Bool(False)
         )
         self.xmega_pub.publish(msg)
 
