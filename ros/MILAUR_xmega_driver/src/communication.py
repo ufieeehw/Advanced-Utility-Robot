@@ -20,8 +20,9 @@ from geometry_msgs.msg import Point, PointStamped, PoseStamped, Pose, Quaternion
 from sensor_msgs.msg import Imu
 from MILAUR_xmega_driver.msg import XMega_Message
 
+
 class Communicator(object):
-    def __init__(self, port, baud_rate, verbose=True):
+    def __init__(self, port, baud_rate, msg_sub_topic='robot/send_xmega_msg', verbose=True):
         '''Superclass for XMega communication
         Purpose: Communicate with an XMega via serial link
         Function:
@@ -52,21 +53,15 @@ class Communicator(object):
         # ROS Setup
         rospy.init_node('XMega_Connector')
         # Messages being sent from ROS to the XMega
-        self.send_msg_sub = rospy.Subscriber('MILAUR/send_xmega_msg', XMega_Message, self.got_poll_msg)
+        self.send_msg_sub = rospy.Subscriber(msg_sub_topic, XMega_Message, self.got_poll_msg)
 
         self.serial = serial.Serial(port, baud_rate)
         # Defines which action function to call on the received data
         self.action_dict = {
         }
-        self.type_lengths = {
-        }
-
         # Defines the relationship between poll_message names and the hex name
         self.poll_messages = {
             'example_poll_msg': '0F'
-        }
-        # 
-        self.data_messages = {
         }
         # First two bits determine the length of the message
         self.byte_type_defs = {
@@ -115,7 +110,6 @@ class Communicator(object):
             msg_type = ord(shitty_type)
             msg_byte_type = msg_type & type_mask
             b_error = (msg_type & error_mask) == error_mask
-
             self.err_log('Recieving message of type', msg_type)
 
             # Message of known length
@@ -161,7 +155,6 @@ class Communicator(object):
                 for character in unicode(data, 'utf-8'):
                     self.err_log("writing character ", character)
                     self.serial.write(character)
-
             else:
                 self.err_log("No other data to write")
         else:
@@ -170,16 +163,16 @@ class Communicator(object):
 
 class MILAUR_Communicator(Communicator):
     def __init__(self, port='/dev/ttyUSB0', baud_rate=256000):
-        '''MILAUR sub-class of the broader XMega Communicator class
+        '''MILAUR sub-class of the broader UFIEEE XMega Communicator class
         XMega Sensor Manifest:
             - None
         XMega Actuator Manifest:
-            - 2x: Wheel Motors (Set Motor Velocities)
+            - 2x: Wheel Motors (Set Motor Powers)
         '''
-        super(self.__class__, self).__init__(port, baud_rate)
+        super(self.__class__, self).__init__(port, baud_rate, msg_sub_topic='MILAUR/send_xmega_msg')
 
         # Define your publisher here
-        self.accel_data_pub = rospy.Publisher('robot/imu', Imu, queue_size=1)
+        self.accel_data_pub = rospy.Publisher('MILAUR/nunchuck', Imu, queue_size=1)
 
         # For messages of known length, get the length from this table
         # Determine which action function to call on the received data
@@ -223,12 +216,9 @@ class MILAUR_Communicator(Communicator):
         self.err_log("We're up in this shit towbot nunchuck!")
 
         self.write_packet('init_towbot_poll')
-        return
 
 
 if __name__=='__main__':
-    '''
-    '''
     Comms = MILAUR_Communicator(port='/dev/ttyUSB0')
     Comms.read_packets()
     rospy.spin()

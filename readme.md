@@ -30,3 +30,4 @@ Note: navigator.py may not yet be implemented
 * Implement navigation
 * Add installation instructions for hokuyo node
 * Add installation instructions for misc required drivers
+* Implement a unified UFIEEE XMega Comms library for rospy
