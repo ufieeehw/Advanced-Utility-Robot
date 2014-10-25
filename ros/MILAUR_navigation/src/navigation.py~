@@ -65,7 +65,7 @@ class Navigator(object):
                 start = index
             elif start >= 0 and end >= 0:
                 theta = np.radians((end - start) * self._angular_resolution)
-                cord = np.sqrt(ranges[start]**2 + ranges[end]**2 + 2 * ranges[start] * ranges[end] * np.cos(theta))
+                cord = np.sqrt(ranges[start]**2 + ranges[end]**2 + 2 * ranges[start] * ranges[end] * cos(theta))
                 if cord > self._min_clearance:
                     error = ((end - ((end - start) / 2)) - middle) * self._angular_resolution
                     groups.append(error)
