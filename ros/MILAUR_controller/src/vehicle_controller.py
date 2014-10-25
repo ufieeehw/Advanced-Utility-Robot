@@ -93,9 +93,9 @@ class Controller(object):
             # A positive angle error should induce a positive turn, and the opposite
             tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
             desired_torque = correction_const * tau
+            self.send_wheel_vel(desired_torque, -desired_torque)
         else:
-            desired_torque = 0
-        self.send_wheel_vel(desired_torque, -desired_torque)
+            self.send_wheel_vel(50, 50)
 
     def send_wheel_vel(self, left_wheel, right_wheel):
         '''Send wheel velocities to XMega
