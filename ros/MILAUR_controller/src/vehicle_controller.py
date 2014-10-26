@@ -89,7 +89,7 @@ class Controller(object):
             p_gain = 0.7
             d_gain = 0.3
             i_gain = 0.1
-            correction_const = 1.0
+            correction_const = 3.0
             # A positive angle error should induce a positive turn, and the opposite
             tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
             desired_torque = correction_const * tau
@@ -113,7 +113,7 @@ class Controller(object):
             1st byte is left motor, 2nd byte is right motor
         '''
         def rectify_wheel_power(value, _min, _max):
-            clamped = np.clip(value, _min, _max)
+            clamped = int(np.clip(value, _min, _max))
             if clamped < 0:
                 return chr(clamped + 256)
             else:
