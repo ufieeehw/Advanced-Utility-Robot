@@ -17,9 +17,9 @@ class Navigator(object):
     _min_angle = np.radians(-270/2)
     _max_angle = np.radians(270/2)
     _angular_resolution = np.radians(0.351625)
-    _avoidance_range = 4
+    _avoidance_range = 2
 
-    _min_clearance = 2
+    _min_clearance = 1.5
 
     def __init__(self):
         rospy.init_node('navigation')
@@ -34,6 +34,9 @@ class Navigator(object):
         lidar_scan = msg.ranges
 
         groups = self.find_available_ranges(lidar_scan)
+
+        # Playing with lidar data
+        #rospy.loginfo(lidar_scan[int(len(lidar_scan)/2)])
 
         if len(groups) != 0:
             self.send_target_angle(min(groups, key = lambda x: abs(x)))
