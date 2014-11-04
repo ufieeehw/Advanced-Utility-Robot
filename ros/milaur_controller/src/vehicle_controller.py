@@ -76,11 +76,13 @@ class Controller(object):
             self.send_wheel_vel(0, 0)
             d = rospy.Duration(2, 0)
             rospy.sleep(d)
+            print "Logging target angle"
             return
         # PID Control
         # Angle error
         angle_error = self.target_angle
-        if angle_error > np.radians(5):
+        if np.abs(angle_error) > np.radians(5):
+        
             # Approximate angular velocity
             angular_velocity = np.average(np.diff(self.targ_angle_history))
             angular_integral = np.trapz(self.targ_angle_history)
@@ -94,7 +96,9 @@ class Controller(object):
             tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
             desired_torque = correction_const * tau
             self.send_wheel_vel(desired_torque, -desired_torque)
+            print "Making a turn with a controller effort of ", desired_torque 
         else:
+            print "Going forward"
             self.send_wheel_vel(50, 50)
 
     def send_wheel_vel(self, left_wheel, right_wheel):
@@ -130,6 +134,7 @@ class Controller(object):
         # if right_wheel_rectified < 0:
             # right_wheel_char = chr(right_wheel_rectified + 256)
         # else:
+        print "sending_wheel_char ", left_wheel_char, right_wheel_char 
         message_data = left_wheel_char + right_wheel_char
         print "Sending a message as ", message_data
         msg = XMega_Message(

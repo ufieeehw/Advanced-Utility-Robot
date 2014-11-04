@@ -28,21 +28,7 @@
 #include <math.h>
 #include "towbot_motor_controller.h"
 #include "pololu_driver.h"
-#include "nunchuk_driver.h"
-#include "message.h"
 #include "types.h"
-
-
-uint8_t data[DATA_LENGTH] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
-int8_t xpos = 0;
-int8_t ypos = 0;
-uint8_t mag = 0;
-int8_t percent_mag = 0;
-int8_t percent_left = 0;
-int8_t percent_right = 0;
 
 void towBot_Init(){
 	PORTQ.DIRSET = 0xF;
@@ -58,4 +44,6 @@ void towBot_Init(){
 int towbot_msg(Message m){
 	pololuDrive(&pololu_left, m.data[0]);
 	pololuDrive(&pololu_right, m.data[1]);
+	
+	return OK;
 }
