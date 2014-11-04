@@ -12,7 +12,7 @@ import rospy
 ## Ros msgs
 from std_msgs.msg import Header, Int16, Bool, String, Float64
 from geometry_msgs.msg import Pose, PoseStamped, Twist, TwistStamped, Vector3
-from MILAUR_xmega_driver.msg import XMega_Message
+from milaur_xmega_driver.msg import XMega_Message
 
 
 def print_in(f):
@@ -50,8 +50,8 @@ class Controller(object):
         rospy.init_node('vehicle_controller')
         self.targ_angle_history = deque()
         self.target_angle = 0
-        self.angle_error_sub = rospy.Subscriber('MILAUR/angle_error', Float64, self.got_target_angle)
-        self.xmega_pub = rospy.Publisher('MILAUR/send_xmega_msg', XMega_Message, queue_size=10)
+        self.angle_error_sub = rospy.Subscriber('milaur/angle_error', Float64, self.got_target_angle)
+        self.xmega_pub = rospy.Publisher('milaur/send_xmega_msg', XMega_Message, queue_size=10)
         rospy.sleep(2)  # Sleep while waiting for the publisher to make things happen
         self.xmega_pub.publish(
             XMega_Message(

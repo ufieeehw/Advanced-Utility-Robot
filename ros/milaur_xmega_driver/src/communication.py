@@ -18,7 +18,7 @@ import tf
 from std_msgs.msg import Header, Float32, Float64, String
 from geometry_msgs.msg import Point, PointStamped, PoseStamped, Pose, Quaternion, Vector3
 from sensor_msgs.msg import Imu
-from MILAUR_xmega_driver.msg import XMega_Message
+from milaur_xmega_driver.msg import XMega_Message
 
 
 class Communicator(object):
@@ -162,18 +162,18 @@ class Communicator(object):
             self.err_log("Write type not recognized")
 
 
-class MILAUR_Communicator(Communicator):
+class milaur_Communicator(Communicator):
     def __init__(self, port='/dev/ttyUSB0', baud_rate=256000):
-        '''MILAUR sub-class of the broader UFIEEE XMega Communicator class
+        '''milaur sub-class of the broader UFIEEE XMega Communicator class
         XMega Sensor Manifest:
             - None
         XMega Actuator Manifest:
             - 2x: Wheel Motors (Set Motor Powers)
         '''
-        super(self.__class__, self).__init__(port, baud_rate, msg_sub_topic='MILAUR/send_xmega_msg')
+        super(self.__class__, self).__init__(port, baud_rate, msg_sub_topic='milaur/send_xmega_msg')
 
         # Define your publisher here
-        self.accel_data_pub = rospy.Publisher('MILAUR/nunchuck', Imu, queue_size=1)
+        self.accel_data_pub = rospy.Publisher('milaur/nunchuck', Imu, queue_size=1)
 
         # For messages of known length, get the length from this table
         # Determine which action function to call on the received data
@@ -217,6 +217,6 @@ class MILAUR_Communicator(Communicator):
 
 
 if __name__=='__main__':
-    Comms = MILAUR_Communicator(port='/dev/ttyUSB0')
+    Comms = milaur_Communicator(port='/dev/ttyUSB0')
     Comms.read_packets()
     rospy.spin()

@@ -24,7 +24,7 @@ class Navigator(object):
     def __init__(self):
         rospy.init_node('navigation')
         self.lidar_listener = rospy.Subscriber('/scan', LaserScan, self.analyze_scan)
-        self.direction_pub = rospy.Publisher('MILAUR/angle_error', Float64)
+        self.direction_pub = rospy.Publisher('milaur/angle_error', Float64)
 
         #rospy.set_param("/hokuyo_node/min_ang", Float64(self._min_angle))
         #rospy.set_param("/hokuyo_node/max_ang", Float64(self._max_angle))
@@ -65,7 +65,7 @@ class Navigator(object):
                 start = index
             elif start >= 0 and end >= 0:
                 theta = np.radians((end - start) * self._angular_resolution)
-                cord = np.sqrt(ranges[start]**2 + ranges[end]**2 + 2 * ranges[start] * ranges[end] * cos(theta))
+                cord = np.sqrt(ranges[start]**2 + ranges[end]**2 + 2 * ranges[start] * ranges[end] * np.cos(theta))
                 if cord > self._min_clearance:
                     error = ((end - ((end - start) / 2)) - middle) * self._angular_resolution
                     groups.append(error)
