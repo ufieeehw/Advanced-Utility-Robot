@@ -9,14 +9,19 @@
 
 #define PERIOD 800
 #define MAGNITUDE (PERIOD/2)
-#define FORWARD 1
-#define REVERSE 0
+
+#define CW_DIR   0 /* Clockwise direction. */
+#define CCW_DIR  1 /* Counter Clockwise direction. */
+#define CLOCK_DIV_bm  TC_CLKSEL_DIV64_gc
+#define CLOCK_DIV     64
+
 
 pololu_t pololu_left = {
 		.PORT = &PORTE,
 		.TC0 = &TCE0,
 		.TC1 = &TCE1
 	};
+
 	
 pololu_t pololu_right = {
 		.PORT = &PORTF,
@@ -24,10 +29,11 @@ pololu_t pololu_right = {
 		.TC1 = &TCF1
 	};
 
+
 void pololuInit(void){
 	// LEFT MOTOR
-	pololu_left.PORT->DIR = 0xCF;					// Set PORT directions
-	pololu_left.PORT->OUT = 0x0E;								// Set inital outputs
+	pololu_left.PORT->DIR = 0xCF;								// Set PORT directions
+	pololu_left.PORT->OUT = 0x0E;								// Set initial outputs
 		
 	pololu_left.TC0->CTRLA |= TC_CLKSEL_DIV1_gc;				// Set clock divider to 64
 	pololu_left.TC0->CTRLB |= 0x10 | TC_WGMODE_SINGLESLOPE_gc;  // Enable single slope PWM. Enable OC A.
@@ -35,23 +41,25 @@ void pololuInit(void){
 	pololu_left.TC0->CCA = MAGNITUDE;
 	
 	// RIGHT MOTOR
-	pololu_right.PORT->DIR = 0xCF;							// Set PORT directions
-	pololu_right.PORT->OUT = 0x0E;							// Set inital outputs
+	pololu_right.PORT->DIR = 0xCF;								// Set PORT directions
+	pololu_right.PORT->OUT = 0x0E;								// Set initial outputs
 		
 	pololu_right.TC0->CTRLA |= TC_CLKSEL_DIV1_gc;				// Set clock divider to 64
-	pololu_right.TC0->CTRLB |= 0x10 | TC_WGMODE_SINGLESLOPE_gc;  // Enable single slope PWM. Enable OC A.
+	pololu_right.TC0->CTRLB |= 0x10 | TC_WGMODE_SINGLESLOPE_gc; // Enable single slope PWM. Enable OC A.
 	pololu_right.TC0->PER = PERIOD;    							// PER = (40kHz*2MHz)/1 = 50
 	pololu_right.TC0->CCA = MAGNITUDE;
 }
 
+
  void pololuDrive(pololu_t *pololu, int8_t percent){
 	// TODO
-	// Should probably write some respectible code
+	// Should probably write some respectable code
 	if(abs(percent) > 100) {
 		percent = 100;
 	}
 	pololu->TC0->CCA = (MAGNITUDE + (MAGNITUDE * ((double)percent/100)));
 }
+
 
 /*  Wrapper function to set up all parameters for the quadrature decoder.
  *
@@ -189,6 +197,7 @@ bool QDEC_EVSYS_Setup(uint8_t qEvMux,
 	return true;
 }
 
+
 /*   brief This function set up the needed configuration for the Timer/Counter
  *         to handle the quadrature decoding from the event system.
  *
@@ -249,4 +258,3 @@ uint8_t QDEC_Get_Direction(TC0_t * qTimer)
 		return CCW_DIR;
 	}
 }
-

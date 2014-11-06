@@ -10,11 +10,6 @@
 
 #include <asf.h>
 
-#define CW_DIR   0 /* Clockwise direction. */
-#define CCW_DIR  1 /* Counter Clockwise direction. */
-#define CLOCK_DIV_bm  TC_CLKSEL_DIV64_gc
-#define CLOCK_DIV     64
-
 /*! This macro return the value of the capture register.
  *
  * \param  _tc   The Timer/Counter to get the capture value from.
