@@ -46,17 +46,17 @@ void MB7060_INIT(void){
 	sei();  //Enable global interrupts
 }
 
-int main (void)
-{
-	MB7060_INIT();
-	
-	PORTD.DIRSET = 0x03;
-	PORTD.OUTSET = 0x03;
-	
-	while(1){
-		
-	}
-}
+// int main (void)
+// {
+// 	MB7060_INIT();
+// 	
+// 	PORTD.DIRSET = 0x03;
+// 	PORTD.OUTSET = 0x03;
+// 	
+// 	while(1){
+// 		
+// 	}
+// }
 
 ISR(TCC0_CCA_vect)
 {
