@@ -28,6 +28,7 @@
 #include <math.h>
 #include "towbot_motor_controller.h"
 #include "pololu_driver.h"
+#include "MB7060_driver.h"
 #include "types.h"
 
 void towBot_Init(){
@@ -35,6 +36,7 @@ void towBot_Init(){
 	PORTQ.OUT = 0x0;
 	
 	pololuInit();
+	MB7060_INIT();
 	
 	//redundant
 	pololuDrive(&pololu_left, 0);
