@@ -67,7 +67,7 @@ void MB7060_INIT(void){
 	TCC0.CCA = samplePeriod;
 	TCC0.CCB = triggerPeriod;
 	TCC0.PER = tenMiliseconds;
-	TCC0.CTRLA = TC_CLKSEL_DIV8_gc;
+	TCC0.CTRLA = TC_CLKSEL_DIV64_gc;
 	
 	PMIC.CTRL |= PMIC_MEDLVLEN_bm; //Enable medium level interrupts for receiver
 	sei();  //Enable global interrupts
