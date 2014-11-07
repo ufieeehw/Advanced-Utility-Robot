@@ -1,21 +1,22 @@
-/**
- * \file
- *
- * \brief Empty user application template
- *
- */
-
 #include "pololu_driver.h"
 
+// Pololu period variables. Assuming 32MHz to set
+//  PWM to 40kHz.
 #define PERIOD 800
 #define MAGNITUDE (PERIOD/2)
 
+// Some variables used by QDEC
 #define CW_DIR   0 /* Clockwise direction. */
 #define CCW_DIR  1 /* Counter Clockwise direction. */
 #define CLOCK_DIV_bm  TC_CLKSEL_DIV64_gc
 #define CLOCK_DIV     64
 
-
+/*
+ * settings for each pololu motor driver.
+ *  PORT is used to handle pololu inputs and outputs.
+ *  TC0 is used to generate PWM
+ *  TC1 is used to handle QDEC
+ */
 pololu_t pololu_left = {
 		.PORT = &PORTE,
 		.TC0 = &TCE0,
@@ -53,7 +54,7 @@ void pololuInit(void){
 
  void pololuDrive(pololu_t *pololu, int8_t percent){
 	// TODO
-	// Should probably write some respectable code
+	// Should probably write some respectable code... buuuuuttt...
 	if(abs(percent) > 100) {
 		percent = 100;
 	}
@@ -88,7 +89,7 @@ bool QDEC_Total_Setup(PORT_t * qPort,
                       EVSYS_CHMUX_t qPinInput,
                       bool useIndex,
                       EVSYS_QDIRM_t qIndexState,
-                      TC0_t * qTimer,
+                      TC1_t * qTimer,
                       TC_EVSEL_t qEventChannel,
                       uint16_t lineCount)
 {
@@ -205,43 +206,13 @@ bool QDEC_EVSYS_Setup(uint8_t qEvMux,
  * \param qEventChannel The event channel to listen to.
  * \param lineCount     The number of lines in the quadrature encoder.
  */
-void QDEC_TC_Dec_Setup(TC0_t * qTimer, TC_EVSEL_t qEventChannel, uint16_t lineCount)
+void QDEC_TC_Dec_Setup(TC1_t * qTimer, TC_EVSEL_t qEventChannel, uint16_t lineCount)
 {
 	/* Configure TC as a quadrature counter. */
 	qTimer->CTRLD = (uint8_t) TC_EVACT_QDEC_gc | qEventChannel;
 	qTimer->PER = (lineCount * 4) - 1;
 	qTimer->CTRLA = TC_CLKSEL_DIV1_gc;
 }
-
-
-/*   brief This function set up the needed configuration for a Timer/Counter
- *         to handle the frequency/speed measurement from the event system.
- *
- * \note   The real frequency of rotation can be calculated from the capture register
- *         by using the folowing function.
- *         FREQ = ( F_CPU / clk_div ) / ( CAPTURE * lineCount )
- *
- * \param qTimer        The timer to use for QDEC.
- * \param qEventChannel The event channel to listen to.
- * \param qPinInput     The pin input of QDPH0 to the EVSYS.CHMUX.
- * \param clksel        The clk div to use for timer.
- */
-void QDEC_TC_Freq_Setup(TC1_t * qTimer,
-                        TC_EVSEL_t qEventChannel,
-                        EVSYS_CHMUX_t qPinInput,
-                        TC_CLKSEL_t clksel)
-{
-	/* Configure channel 2 to input pin for freq calculation. */
-	EVSYS.CH2MUX = qPinInput;
-	EVSYS.CH2CTRL = EVSYS_DIGFILT_4SAMPLES_gc;
-
-	/* Configure TC to capture frequency. */
-	qTimer->CTRLD = (uint8_t) TC_EVACT_FRQ_gc | qEventChannel;
-	qTimer->PER = 0xFFFF;
-	qTimer->CTRLB = TC0_CCAEN_bm;
-	qTimer->CTRLA = clksel;
-}
-
 
 /*   brief This function return the direction of the counter/QDEC.
  *
@@ -250,9 +221,9 @@ void QDEC_TC_Freq_Setup(TC1_t * qTimer,
  * \retval CW_DIR     if clockwise/up counting,
  * \retval CCW_DIR    if counter clockwise/down counting.
  */
-uint8_t QDEC_Get_Direction(TC0_t * qTimer)
+uint8_t QDEC_Get_Direction(TC1_t * qTimer)
 {
-	if (qTimer->CTRLFSET & TC0_DIR_bm){
+	if (qTimer->CTRLFSET & TC1_DIR_bm){
 		return CW_DIR;
 	}else{
 		return CCW_DIR;
