@@ -3,15 +3,10 @@
     <param name="milaur_cam" value="/dev/video0" />
     <param name="image_width" value="640" />
     <param name="image_height" value="480" />
-    <param name="pixel_format" value="mjpeg" />
+    <param name="pixel_format" value="yuyv" />
     <param name="camera_frame_id" value="usb_cam" />
     <param name="io_method" value="mmap"/>
     <param name="framerate" value="10" />
-  </node>
-
-  <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
-    <remap from="image" to="/milaur_cam/image_raw"/>
-    <param name="autosize" value="true" />
   </node>
 
   <node name="navigation" pkg="milaur_navigation" type="navigation.py" output="screen">
