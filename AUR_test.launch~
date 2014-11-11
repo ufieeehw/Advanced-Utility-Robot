@@ -1,7 +1,0 @@
-<launch>
-  <node name="communication" pkg="MILAUR_xmega_driver" 
-	type="communication" />
-  <node name="vehicle_controller" pkg="MILAUR_controller" 
-    type="vehicle_controller" />
-  <node name="navigator" pkg="MILAUR_navigator" type="navigator" />
-</launch>
