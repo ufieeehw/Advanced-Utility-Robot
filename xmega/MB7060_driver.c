@@ -9,14 +9,15 @@
 #define cmtoADC(distance) ((uint16_t)((distance) * .0049 / 0.002441406))
 
 // All periods assume F_CPU = 32MHz
-#define tenMiliseconds 50000 
-#define triggerPeriod 6240
-#define samplePeriod 6250
+#define tenMiliseconds 50000	// 10mS
+#define sixteenMiliseconds 8000	// 16mS
+#define triggerPeriod 1			//
+#define samplePeriod 32500		// 65mS
 
 // Buffers to hold averaged sonar values
-volatile uint16_t left_sonar_value = 0;
-volatile uint16_t middle_sonar_value = 0;
-volatile uint16_t right_sonar_value = 0;
+volatile static uint16_t left_sonar_value = 0;
+volatile static uint16_t middle_sonar_value = 0;
+volatile static uint16_t right_sonar_value = 0;
 
 /*
  * ADCA channels 0, 1, and 2 are set up in single ended, signed, 12bit right aligned mode
@@ -39,10 +40,10 @@ void ADC_INIT(void){
 
 /*
  * The MB7060 sonars will require three (3) ADC channels to get distance information.
- *  They will also require a single pin which goes high for 20uS(CCB) to trigger each sonar
+ *  They will also require a single pin which goes high for 20uS(CCA) to trigger each sonar
  *  sample. The sonar samples will be stored in the xxx_sonar_value buffer, respective to
- *  each sonar. The sonar information is updated at 10Hz. During that 10Hz, eight (8)
- *  samples are taken (CCA) and at the end of the 100ms period, they are averaged together
+ *  each sonar. The sonar information is updated at 81mS. Between 65mS and 81mS, eight (8)
+ *  samples are taken (CCB) and at the end of the 81mS they are averaged together
  *  and output. This entire process is interrupt driven.
  */
 void MB7060_INIT(void){
@@ -53,21 +54,15 @@ void MB7060_INIT(void){
 	PORTD.OUTCLR = 0x80;
 
 	/*
-	 * 10ms timer using Timer/Counter C0. CCB is used to trigger the sonars while CCA is used
-	 *   to capture them. It is important to note that when the sonars are triggered it is for
-	 *   next capture. In other words, if I trigger the sonar and then follow with a capture,
-	 *   that capture is NOT the information from the trigger I just sent. The speed of sound
-	 *   requires that there be a few milliseconds between when a sonar ping is sent and when it
-	 *   is received. This method triggers the next round of information while collecting the
-	 *   previous round. This is fine, because of the speed of movement is relatively slow and
-	 *  the sample rate is plenty fast.
+	 * 10ms timer using Timer/Counter C0. CCA is used to trigger the sonars while CCB is used
+	 *   to capture them.
 	 */
 	TCC0.CTRLA = TC_CLKSEL_OFF_gc;
 	TCC0.CTRLB = TC_WGMODE_NORMAL_gc;
 	TCC0.INTCTRLA = TC_OVFINTLVL_MED_gc;
 	TCC0.INTCTRLB = TC_CCAINTLVL_MED_gc | TC_CCBINTLVL_MED_gc;
-	TCC0.CCA = samplePeriod;
-	TCC0.CCB = triggerPeriod;
+	TCC0.CCA = triggerPeriod;
+	TCC0.CCB = samplePeriod;
 	TCC0.PER = tenMiliseconds;
 	TCC0.CTRLA = TC_CLKSEL_DIV64_gc;
 	
@@ -79,59 +74,53 @@ void MB7060_INIT(void){
 	PORTD.OUTSET = 0x03;
 }
 
-/*
- * ISR to handle collection of sonar data.
- */
-ISR(TCC0_CCA_vect)
-{
-	// Disable sonar
-	PORTD.OUTCLR = 0x80;
-	PORTD.OUTTGL = 0x02;  // TEST
-		
-	// take 7 samples
-	if(TCC0.CCA < ((uint16_t)samplePeriod * 7)){
-		TCC0.CCA += samplePeriod;	
-	}
-	
-	left_sonar_value += ADCA.CH0.RES;
-	middle_sonar_value += ADCA.CH1.RES;
-	right_sonar_value += ADCA.CH2.RES;
-}
 
 /*
  * ISR to trigger sonar. Pin is pulled high here, and ~20uS later pulled
- *  low in CCB ISR. Offset each time by samplePeriod.
+ *  low.
+ */
+ISR(TCC0_CCA_vect)
+{
+	// Trigger sonar
+	if (TCC0.CCA == triggerPeriod)
+	{
+		PORTD.OUTSET = 0x80;
+		TCC0.CCA += 10;
+	} else { // stop sonar trigger and reset
+		PORTD.OUTCLR = 0x80;
+		TCC0.CCA = triggerPeriod;
+	}
+}
+
+
+/*
+ * ISR to handle collection of sonar data. Will be triggered 7 times before the
+ *  final (8th) data point is collected and averaged. This acts as a low-pass
+ *  filter for the sonar ADCs.
  */
 ISR(TCC0_CCB_vect)
 {
-	// Trigger sonar
-	PORTD.OUTSET = 0x80;
-	TCC0.CCB += samplePeriod;
-}
-
-/*
- * Overflow ISR every 100ms. Handles the 8th and final capture, averages the
- *  data and outputs it for use. This ISR is also responsible for resetting
- *  everything for the next round of sampling.
- */
-ISR(TCC0_OVF_vect) {
-	TCC0.CCA = samplePeriod;
-	TCC0.CCB = triggerPeriod;
-	
 	// Disable sonar
 	PORTD.OUTCLR = 0x80;
-	PORTD.OUTTGL = 0x03; // TEST
 	
-	// Get the 8th sample and average
-	left_sonar_value = (left_sonar_value + ADCA.CH0.RES) >> 3;
-	middle_sonar_value = (middle_sonar_value + ADCA.CH1.RES) >> 3;
-	right_sonar_value = (right_sonar_value + ADCA.CH2.RES) >> 3;
+	// If just starting to sample, clear buffers
+	if (TCC0.CCB == samplePeriod)
+	{
+		left_sonar_value = 0;
+		middle_sonar_value = 0;
+		right_sonar_value = 0;		
+	}
 	
-	// TODO
-	// Output Data
-	
-	// Clear buffer values
-	left_sonar_value = 0;
-	middle_sonar_value = 0;
-	right_sonar_value = 0;
+	// take 7 samples
+	if(TCC0.CCB < ((uint16_t)samplePeriod + sixteenMiliseconds)){
+		TCC0.CCB += 1000;
+		left_sonar_value += ADCA.CH0.RES;
+		middle_sonar_value += ADCA.CH1.RES;
+		right_sonar_value += ADCA.CH2.RES;	
+	} else { // average the samples together and reset counter compare
+		TCC0.CCB = samplePeriod;
+		left_sonar_value = (left_sonar_value >> 3);
+		middle_sonar_value = (middle_sonar_value >> 3);
+		right_sonar_value = (right_sonar_value >> 3);
+	}
 }

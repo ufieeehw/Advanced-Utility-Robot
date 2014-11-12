@@ -49,3 +49,11 @@ int towbot_msg(Message m){
 	
 	return OK;
 }
+
+/*
+ * Overflow ISR every 100ms.
+ */
+ISR(TCC0_OVF_vect) {
+	//TODO
+	// ACTING STATE
+}
