@@ -78,7 +78,7 @@ class Navigator(object):
         focalLength = 3.67
         targetAngle = math.atan2((blobX-centX)*pixelPitch, focalLength)
 
-        print "Target Angle is:", targetAngle
+        #print "Target Angle is:", targetAngle
 
         # debug stuffs
         '''

@@ -88,10 +88,10 @@ class Controller(object):
             angular_integral = np.trapz(self.targ_angle_history)
 
             # PID Gains, play with these if the robot jitters
-            p_gain = 0.7
-            d_gain = 0.3
-            i_gain = 0.1
-            correction_const = 3.0
+            p_gain = 25 #0.7
+            d_gain = 100 #0.3
+            i_gain = 10 #.01
+            correction_const = 1.0
             # A positive angle error should induce a positive turn, and the opposite
             tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
             desired_torque = correction_const * tau
