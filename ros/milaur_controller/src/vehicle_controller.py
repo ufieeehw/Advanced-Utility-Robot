@@ -55,8 +55,8 @@ class Controller(object):
         rospy.sleep(2)  # Sleep while waiting for the publisher to make things happen
         self.xmega_pub.publish(
             XMega_Message(
-                type=String('robot_start'),
-                empty_flag=Bool(True),
+                type=str('robot_start'),
+                empty_flag=bool(True),
             )
         )
 
@@ -138,9 +138,9 @@ class Controller(object):
         message_data = left_wheel_char + right_wheel_char
         print "Sending a message as ", message_data
         msg = XMega_Message(
-            type=String('motors'),
-            data=String(message_data),
-            empty_flag=Bool(False)
+            type=str('motors'),
+            data=str(message_data),
+            empty_flag=bool(False)
         )
         self.xmega_pub.publish(msg)
 
