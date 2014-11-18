@@ -10,6 +10,7 @@
 #include "usart.h"
 #include "table.h"
 #include "meta.h"
+#include "towbot_motor_controller.h"
 
 //Quantum definitions (how many buffer operations per function call)
 #define BUFFER_ALLOWED  16

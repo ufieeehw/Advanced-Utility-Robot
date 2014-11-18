@@ -1,6 +1,8 @@
 #include <asf.h>
 #include <avr/interrupt.h>
 #include "MB7060_driver.h"
+#include "message.h"
+#include "types.h"
 
 /*
  * Macro to make distance thresholds easier. All actual calculations and compares
@@ -122,5 +124,13 @@ ISR(TCC0_CCB_vect)
 		left_sonar_value = (left_sonar_value >> 3);
 		middle_sonar_value = (middle_sonar_value >> 3);
 		right_sonar_value = (right_sonar_value >> 3);
+		
+		// Send sonar data to ROS
+		Message out = get_msg(SONAR_DATA_TYPE, 6);
+		*out.data = left_sonar_value;
+		*(out.data + 2) = middle_sonar_value;
+		*(out.data + 4) = right_sonar_value;
+		queue_push(out,OUT_QUEUE);  //send ack
+		
 	}
 }

@@ -10,8 +10,7 @@
 #include "message.h"
 #include "table.h"
 #include "meta.h"
-#include "IMU.h"
-#include "NewStep.h"
+#include "towbot_motor_controller.h"
 
 //NO_DATA_TYPE function pointers (messages with only a type field)
 int (*no_data_func[NO_DATA_ARRAY_SIZE]) (Message m) = {
