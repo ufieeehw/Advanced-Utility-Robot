@@ -3,6 +3,7 @@
 #include <string.h>
 #include "message.h"
 #include "types.h"
+#include "meta.h"
 
 //initialize the global variables (no messages and null pointers)
 int message_count = 0;
@@ -85,6 +86,9 @@ int queue_pop(Message* m, int direction){
  * Returns 0 if successfull */
 int queue_push(Message m, int direction){
   if(MAX_MESSAGE <= message_count) return MESSAGE_ERROR_TYPE;  //no more space
+  
+  //dont let messages enter queue before starting
+  if(!start_ok && direction) return;
   
   Message *new_msg = get_node();  //get the pointer
   new_msg->type = m.type;   //copy the data fields

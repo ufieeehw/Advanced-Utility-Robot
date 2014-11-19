@@ -110,6 +110,9 @@ void resolve_single_input(){
     
   buffer_pop(&in_buffer, &data); //read a byte from the buffer
   
+  //don't buffer unexpected messages
+  if(!start_ok && data != START_TYPE) return;
+  
   //preform different actions based on the byte count
   if(0 == in_count){  //type field
     if((m_in.type & DATA_MASK ) != DATA_NB_TYPE)  //not nb type

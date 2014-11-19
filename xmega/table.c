@@ -33,7 +33,7 @@ int (*data_1b_func[DATA_1B_ARRAY_SIZE]) (Message m) = {
 };
 
 
-//DATA_2B_TYPE function pointers (messaegs with 2 bytes of data)
+//DATA_2B_TYPE function pointers (messages with 2 bytes of data)
 int (*data_2b_func[DATA_2B_ARRAY_SIZE]) (Message m) = {
   towbot_msg,     //0x80 - unused
   no_func,        //0x81 - unused

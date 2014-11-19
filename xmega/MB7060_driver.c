@@ -11,7 +11,7 @@
 #define cmtoADC(distance) ((uint16_t)((distance) * .0049 / 0.002441406))
 
 // All periods assume F_CPU = 32MHz
-#define tenMiliseconds 50000	// 10mS
+#define tenHertz 50000	// 10mS
 #define sixteenMiliseconds 8000	// 16mS
 #define triggerPeriod 1			//
 #define samplePeriod 32500		// 65mS
@@ -65,7 +65,7 @@ void MB7060_INIT(void){
 	TCC0.INTCTRLB = TC_CCAINTLVL_MED_gc | TC_CCBINTLVL_MED_gc;
 	TCC0.CCA = triggerPeriod;
 	TCC0.CCB = samplePeriod;
-	TCC0.PER = tenMiliseconds;
+	TCC0.PER = tenHertz;
 	TCC0.CTRLA = TC_CLKSEL_DIV64_gc;
 	
 	PMIC.CTRL |= PMIC_MEDLVLEN_bm; //Enable medium level interrupts for receiver
@@ -124,13 +124,18 @@ ISR(TCC0_CCB_vect)
 		left_sonar_value = (left_sonar_value >> 3);
 		middle_sonar_value = (middle_sonar_value >> 3);
 		right_sonar_value = (right_sonar_value >> 3);
-		
-		// Send sonar data to ROS
-		Message out = get_msg(SONAR_DATA_TYPE, 6);
-		*out.data = left_sonar_value;
-		*(out.data + 2) = middle_sonar_value;
-		*(out.data + 4) = right_sonar_value;
-		queue_push(out,OUT_QUEUE);  //send ack
-		
 	}
+}
+
+/*
+ * Overflow ISR every 100ms.
+ */
+ISR(TCC0_OVF_vect) {
+	PORTD.OUTTGL = 0x01;
+	// Send sonar data to ROS
+	Message out = get_msg(SONAR_DATA_TYPE, 6);
+	*out.data = left_sonar_value;
+	*(out.data + 2) = middle_sonar_value;
+	*(out.data + 4) = right_sonar_value;
+	queue_push(out,OUT_QUEUE);  //send ack
 }

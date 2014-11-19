@@ -34,6 +34,9 @@
 void towBot_Init(){
 	PORTQ.DIRSET = 0xF;
 	PORTQ.OUT = 0x0;
+	// DELETE ME: DEBUG CODE
+	PORTD.DIRSET = 0x01;
+	PORTD.OUTCLR = 0x01;
 	
 	pololuInit();
 	MB7060_INIT();
@@ -48,12 +51,4 @@ int towbot_msg(Message m){
 	pololuDrive(&pololu_right, m.data[1]);
 	
 	return OK;
-}
-
-/*
- * Overflow ISR every 100ms.
- */
-ISR(TCC0_OVF_vect) {
-	//TODO
-	// ACTING STATE
 }

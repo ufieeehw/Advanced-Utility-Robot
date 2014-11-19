@@ -25,7 +25,7 @@ void init(){
   
   //do component driver initializations
   meta_init();  //initialize meta functions (should come first)
-  towBot_Init(); //I'm sorry, lost the origional, please replace this
+  towBot_Init(); //I'm sorry, lost the original, please replace this
   //ADD MORE HERE
   
   //initialize communications
