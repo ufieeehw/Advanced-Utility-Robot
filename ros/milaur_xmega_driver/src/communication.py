@@ -136,24 +136,18 @@ class Communicator(object):
         type_mask =  0b11000000
         error_mask = 0b00110000
 
-        # Initialize time
-        old_time = time.time()
-
         while True:
-            # Timed watchdog messages
-            new_time = time.time()
-            if (new_time - old_time) > 0.5:
-                old_time = new_time
-                self.send_keep_alive()
-
+            print "Break point 1"
             # Handle the first byte, determining type
             unprocessed_type = self.serial.read(type_length)
+            print "Break point 1.1"
             self.err_log("shitty type ", unprocessed_type)
             msg_type = ord(unprocessed_type)
             msg_byte_type = msg_type & type_mask
+            print "Break point 1.2"
             b_error = (msg_type & error_mask) == error_mask
             self.err_log('Recieving message of type', msg_type)
-
+            print "Break point 2"
             # Message of known length
             if msg_byte_type in self.byte_type_defs.keys():
                 msg_length = self.byte_type_defs[msg_byte_type]
@@ -182,7 +176,7 @@ class Communicator(object):
             # Failure
             else:
                 self.err_log('Did not recognize type', msg_type)
-
+            print "Break point 3"
         if msg_byte_type in self.byte_type_defs.keys():
             msg_length = self.byte_type_defs[msg_byte_type]
             if msg_length > 0:
@@ -225,6 +219,17 @@ class Communicator(object):
         else:
             self.err_log("Write type not recognized")
 
+    def keep_alive_loop(self):
+        # Initialize time
+        old_time = time.time()
+
+        while True:
+            # Timed watchdog messages
+            new_time = time.time()
+            if (new_time - old_time) > .5:
+                old_time = new_time
+                self.send_keep_alive()
+
 
 class milaur_Communicator(Communicator):
     def __init__(self, port='/dev/ttyUSB0', baud_rate=256000):
@@ -251,6 +256,7 @@ class milaur_Communicator(Communicator):
         self.poll_messages.update({
             # 'poll_imu': 0x01,
             'robot_start': 0x02,
+            'keep_alive': 0x03,
             'motors': 0x80,
             'debug': 0x40,
         })
@@ -300,6 +306,10 @@ class milaur_Communicator(Communicator):
 
 
 if __name__=='__main__':
+    print "in the beginning, there was com code"
     Comms = milaur_Communicator(port='/dev/ttyUSB0')
+    thread = threading.Thread(target=Comms.keep_alive_loop)
+    thread.daemon = True
+    thread.start()
     Comms.read_packets()
     rospy.spin()
