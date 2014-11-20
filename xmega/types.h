@@ -23,14 +23,14 @@ The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/parse_types)
 
 /* Message Type Definitions */
 //NO_DATA_TYPE messages [0x01-0x2F]
-#define KILL_TYPE             0x01 // out: 'kill'
-#define START_TYPE            0x02 // out: 'start'
-#define KEEP_ALIVE_TYPE       0x03 // out: 'keep_alive'
-#define IMU_NOTIFY_TYPE       0x04 // out: 'poll_imu'
+#define KILL_TYPE             0x01 // out: kill
+#define START_TYPE            0x02 // out: start
+#define KEEP_ALIVE_TYPE       0x03 // out: keep_alive
+#define IMU_NOTIFY_TYPE       0x04 // out: poll_imu
 
 
 //DATA_1B_TYPE messages [0x40-0x6F]
-#define DEBUG_TYPE            0x40 // bidirectional: 'debug'
+#define DEBUG_TYPE            0x40 // in: xmega_debug; out: ros_debug
 
 
 //DATA_2B_TYPE messages [0x80-0xAF]
@@ -39,14 +39,14 @@ The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/parse_types)
 
 //DATA_NB_TYPE messages [0xC0-0xEF]
 
-#define SONAR_DATA_TYPE         0xEF // in: 'sonar_data' 
+#define SONAR_DATA_TYPE         0xEF // in: sonar_data
 
 
 /*Error Type Definitions (should represent an entire subsystem) */
 //NO_DATA_TYPE errors [0x30-0x3F] (and also OK)
-#define OK                    0x00 // in: 'xmega_ok'
-#define MESSAGE_ERROR_TYPE    0x30 // in: 'message_error'
-#define BUFFER_ERROR_TYPE     0x31 // in: 'buffer_error'
+#define OK                    0x00 // in: xmega_ok
+#define MESSAGE_ERROR_TYPE    0x30 // in: message_error
+#define BUFFER_ERROR_TYPE     0x31 // in: buffer_error
 
 
 //DATA_1B_TYPE errors [0x70-0x7F]
@@ -56,7 +56,7 @@ The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/parse_types)
 
 
 //DATA_NB_TYPE errors [0xF0-0xFF]
-#define VECTOR_ERROR_TYPE     0xF0 // in: 'vector_error'
+#define VECTOR_ERROR_TYPE     0xF0 // in: vector_error
 
 
 /* TODO: FILL IN TYPES */
