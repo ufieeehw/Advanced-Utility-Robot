@@ -121,9 +121,17 @@ ISR(TCC0_CCB_vect)
 		right_sonar_value += ADCA.CH2.RES;	
 	} else { // average the samples together and reset counter compare
 		TCC0.CCB = samplePeriod;
-		left_sonar_value = (left_sonar_value >> 3);
-		middle_sonar_value = (middle_sonar_value >> 3);
-		right_sonar_value = (right_sonar_value >> 3);
+		left_sonar_value = 111;//(left_sonar_value >> 3);
+		middle_sonar_value = 222;//(middle_sonar_value >> 3);
+		right_sonar_value = 121;//(right_sonar_value >> 3);
+	
+		// Send sonar data to ROS
+		Message out = get_msg(SONAR_DATA_TYPE, 6);
+		*out.data = left_sonar_value;
+		*(out.data + 2) = middle_sonar_value;
+		*(out.data + 4) = right_sonar_value;
+		queue_push(out,OUT_QUEUE);  //send ack
+		
 	}
 }
 
@@ -132,10 +140,4 @@ ISR(TCC0_CCB_vect)
  */
 ISR(TCC0_OVF_vect) {
 	PORTD.OUTTGL = 0x01;
-	// Send sonar data to ROS
-	Message out = get_msg(SONAR_DATA_TYPE, 6);
-	*out.data = left_sonar_value;
-	*(out.data + 2) = middle_sonar_value;
-	*(out.data + 4) = right_sonar_value;
-	queue_push(out,OUT_QUEUE);  //send ack
 }

@@ -142,7 +142,7 @@ Message get_msg(uint8_t type, uint8_t size){
     case 1: cache_num = DATA_CACHE_1B; break;
     case 2: cache_num = DATA_CACHE_2B; break;
     case 4: cache_num = DATA_CACHE_4B; break;
-    case 6: cache_num = DATA_CACHE_4B; break;
+    case 6: cache_num = DATA_CACHE_6B; break;
     case 12: cache_num = DATA_CACHE_12B; break;
   }
   
