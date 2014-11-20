@@ -1,6 +1,9 @@
 <launch>
+  <!--
   <node name="communication" pkg="milaur_xmega_driver" type="communication.py" output="screen">
   </node>
+  -->
+  <include file="$(find milaur_xmega_driver)/launch/xmega_driver.launch"/>
 
   <node name="controller" pkg="milaur_controller" type="vehicle_controller.py" output="screen">
   </node>
