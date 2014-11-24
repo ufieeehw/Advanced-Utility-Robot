@@ -18,6 +18,8 @@ from std_msgs.msg import Header, Float64, String
 from geometry_msgs.msg import Point, PointStamped, PoseStamped, Pose, Quaternion, Vector3
 #from sensor_msgs.msg import Imu
 from ieee2015_xmega_driver.msg import XMega_Message
+from milaur_controller.msg import Wheel_Velocity
+from milaur_navigation.msg import Sonar_Data
 
 
 class Xmega_Driver(object):
@@ -64,11 +66,13 @@ class Xmega_Driver(object):
 
         # Add ROS elements
         #self.accel_data_pub = rospy.Publisher('robot/imu', Imu, queue_size=1)
+        self.sonar_data_pub = rospy.Publisher('/milaur/sonar', Sonar_Data, queue_size=1)
 
         # Messages being sent from ROS to the XMega
         # To add a ROS->XMega message, you must...
         # Potentially add binding for ros-sending functions as well.
         self.debug_subscriber = rospy.Subscriber('robot/debug', String, self.got_ros_debug)
+        self.wheel_velocity_subscriber = rospy.Subscriber("/milaur/wheel_velocity", Wheel_Velocity, self.got_wheel_velocity)
 
 
         # Bind types file to serial proxy
@@ -98,8 +102,14 @@ class Xmega_Driver(object):
         for char in string:
             self.serial_proxy.add_message('ros_debug', char)
 
+    def got_wheel_velocity(self, msg):
+        left_wheel_char = chr(int(msg.left_wheel))
+        right_wheel_char = chr(int(msg.right_wheel))
+        message_data = left_wheel_char + right_wheel_char
+        self.serial_proxy.add_message('motor', message_data)
+
     def got_xmega_error(self, msg_data):
-        self.err_log("Got error,", msg_data)
+        print("Got error,", msg_data)
 
     def got_test(self, msg_data):
         print "Recieved test!"
@@ -107,7 +117,34 @@ class Xmega_Driver(object):
             print "Data:", msg_data
 
     def got_sonar_data(self, msg_data):
-        print "winning!"
+        '''
+        Converts sonar ADC values to cm.
+        The conversion is as follows:
+            Vin = RES * ((VREF * VDIV)/TOP)
+
+            VREF is defined at 3.3V/1.6V = 20625V
+            VDIV = (47 + 33)/33 = 2.424242
+            TOP = 2^12/2 = 2047
+            Vin = RES * 0.002443
+
+            The sonar measures ~4.9mV/cm = 0.0049V/cm
+            Distance(cm) = Vin / 0.0049 V/cm
+            Distance(cm) = RES * (0.002443/0.0049)cm
+            Distance(cm) = RES * 0.49849
+
+        The first BYTE recieved is the lower BYTE of the 16 bit ADC value.
+         We get the value of the ADC by sifting the second BYTE left 8 times
+         then adding the two values together. To convert that value to cm, we
+         multiply it by 0.49849.
+        '''
+
+        msg = Sonar_Data(
+            left_sonar = ((ord(msg_data[1])<<8) + ord(msg_data[0])) * 0.49849,
+            middle_sonar = ((ord(msg_data[3])<<8) + ord(msg_data[2])) * 0.49849,
+            right_sonar = ((ord(msg_data[5])<<8) + ord(msg_data[4])) * 0.49849
+        )
+        self.sonar_data_pub.publish(msg)
+
     '''
     def got_imu_reading(self, msg_data):
         Handle data read from the IMU

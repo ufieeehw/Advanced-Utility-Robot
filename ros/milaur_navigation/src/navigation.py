@@ -28,7 +28,7 @@ class Navigator(object):
 
         # define range for pink color in BGR
         self.upper_pink = np.array([180, 255, 255], dtype=np.uint8)
-        self.lower_pink = np.array([150, 190, 150], dtype=np.uint8)
+        self.lower_pink = np.array([160, 80, 100], dtype=np.uint8)
 
         
     def process_image(self, msg):
@@ -61,6 +61,7 @@ class Navigator(object):
 
         # If no objects found, just leave
         if len(contours) == 0:
+            self.send_target_angle(0)
             return
 
         # Find the index of the largest contour

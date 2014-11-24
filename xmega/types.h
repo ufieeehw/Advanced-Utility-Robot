@@ -34,7 +34,7 @@ The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/parse_types)
 
 
 //DATA_2B_TYPE messages [0x80-0xAF]
-#define TOWBOT_TYPE           0x80
+#define TOWBOT_TYPE           0x80 // out: motor
 
 
 //DATA_NB_TYPE messages [0xC0-0xEF]
