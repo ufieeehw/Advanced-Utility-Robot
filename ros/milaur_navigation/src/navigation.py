@@ -27,8 +27,8 @@ class Navigator(object):
         self.bridge = CvBridge()
 
         # define range for pink color in BGR
-        self.upper_pink = np.array([180, 255, 255], dtype=np.uint8)
-        self.lower_pink = np.array([160, 80, 100], dtype=np.uint8)
+        self.upper_pink = np.array([170, 255, 255], dtype=np.uint8)
+        self.lower_pink = np.array([160, 130, 100], dtype=np.uint8)
 
         
     def process_image(self, msg):
