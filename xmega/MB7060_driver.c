@@ -14,7 +14,7 @@
 #define tenHertz 50000	// 10mS
 #define sixteenMiliseconds 8000	// 16mS
 #define triggerPeriod 1			//
-#define samplePeriod 32500		// 65mS
+#define samplePeriod 40000		// 65mS
 
 // Buffers to hold averaged sonar values
 volatile static uint16_t left_sonar_value = 0;
@@ -87,10 +87,11 @@ ISR(TCC0_CCA_vect)
 	if (TCC0.CCA == triggerPeriod)
 	{
 		PORTD.OUTSET = 0x80;
-		TCC0.CCA += 10;
+		TCC0.CCA += 64;
 	} else { // stop sonar trigger and reset
 		PORTD.OUTCLR = 0x80;
-		TCC0.CCA = triggerPeriod;
+		PORTD.DIRCLR = 0x80; // Setting a pin to input makes it hi-Z
+		TCC0.INTCTRLB &= TC_CCAINTLVL_OFF_gc; // Disable the interrupt		
 	}
 }
 
@@ -103,41 +104,53 @@ ISR(TCC0_CCA_vect)
 ISR(TCC0_CCB_vect)
 {
 	// Disable sonar
-	PORTD.OUTCLR = 0x80;
+//	PORTD.OUTCLR = 0x80;
 	
 	// If just starting to sample, clear buffers
-	if (TCC0.CCB == samplePeriod)
-	{
-		left_sonar_value = 0;
-		middle_sonar_value = 0;
-		right_sonar_value = 0;		
-	}
+//	if (TCC0.CCB == samplePeriod)
+//	{
+//		left_sonar_value = 0;
+//		middle_sonar_value = 0;
+//		right_sonar_value = 0;		
+//	}
 	
 	// take 7 samples
-	if(TCC0.CCB < ((uint16_t)samplePeriod + sixteenMiliseconds)){
-		TCC0.CCB += 1000;
-		left_sonar_value += ADCA.CH0.RES;
-		middle_sonar_value += ADCA.CH1.RES;
-		right_sonar_value += ADCA.CH2.RES;	
-	} else { // average the samples together and reset counter compare
-		TCC0.CCB = samplePeriod;
-		left_sonar_value = 111;//(left_sonar_value >> 3);
-		middle_sonar_value = 222;//(middle_sonar_value >> 3);
-		right_sonar_value = 121;//(right_sonar_value >> 3);
-	
-		// Send sonar data to ROS
-		Message out = get_msg(SONAR_DATA_TYPE, 6);
-		*out.data = left_sonar_value;
-		*(out.data + 2) = middle_sonar_value;
-		*(out.data + 4) = right_sonar_value;
-		queue_push(out,OUT_QUEUE);  //send ack
+//	if(TCC0.CCB < ((uint16_t)samplePeriod + sixteenMiliseconds)){
+//		TCC0.CCB += 1000;
+//		left_sonar_value += ADCA.CH0.RES;
+//		middle_sonar_value += ADCA.CH1.RES;
+//		right_sonar_value += ADCA.CH2.RES;	
+//	} else { // average the samples together and reset counter compare
+//		TCC0.CCB = samplePeriod;
+// 		left_sonar_value = ADCA.CH0.RES; //(left_sonar_value >> 3);
+// 		middle_sonar_value = ADCA.CH1.RES; //(middle_sonar_value >> 3);
+// 		right_sonar_value = ADCA.CH2.RES; //(right_sonar_value >> 3);
+// 	
+// 		// Send sonar data to ROS
+// 		Message out = get_msg(SONAR_DATA_TYPE, 6);
+// 		*out.data = left_sonar_value;
+// 		*(out.data + 2) = middle_sonar_value;
+// 		*(out.data + 4) = right_sonar_value;
+// 		queue_push(out,OUT_QUEUE);  //send ack
 		
-	}
+//	}
 }
 
 /*
  * Overflow ISR every 100ms.
  */
 ISR(TCC0_OVF_vect) {
-	PORTD.OUTTGL = 0x01;
+		left_sonar_value = ADCA.CH0.RES; //(left_sonar_value >> 3);
+		middle_sonar_value = ADCA.CH1.RES; //(middle_sonar_value >> 3);
+		right_sonar_value = ADCA.CH2.RES; //(right_sonar_value >> 3);
+		
+		// Send sonar data to ROS
+		Message out = get_msg(SONAR_DATA_TYPE, 6);
+		*out.data = left_sonar_value;
+		*(out.data + 1) = left_sonar_value >> 8;
+		*(out.data + 2) = middle_sonar_value;
+		*(out.data + 3) = middle_sonar_value >> 8;
+		*(out.data + 4) = right_sonar_value;
+		*(out.data + 5) = right_sonar_value >> 8;
+		queue_push(out,OUT_QUEUE);  //send ack
 }

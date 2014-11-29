@@ -47,8 +47,8 @@ void towBot_Init(){
 }
 
 int towbot_msg(Message m){
-	pololuDrive(&pololu_left, m.data[0]);
-	pololuDrive(&pololu_right, m.data[1]);
+	pololuDrive(&pololu_left, m.data[1]);
+	pololuDrive(&pololu_right, m.data[0]);
 	
 	return OK;
 }
