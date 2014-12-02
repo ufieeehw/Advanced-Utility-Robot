@@ -13,6 +13,7 @@ import rospy
 from std_msgs.msg import Header, Int16, Bool, String, Float64
 from geometry_msgs.msg import Pose, PoseStamped, Twist, TwistStamped, Vector3
 from milaur_controller.msg import Wheel_Velocity
+from milaur_navigation.msg import Sonar_Data
 
 
 def print_in(f):
@@ -34,6 +35,7 @@ def xyzw_array(quaternion):
 
 class Controller(object):
     _targ_angle_hist_length = 25  # Length of deque for derivative and integral PID terms
+    _sonar_data_threshold = 100   # Threshold for the sonars
 
     def __init__(self):
         '''This is the controller object for the MIL Advanced 
@@ -50,7 +52,13 @@ class Controller(object):
         rospy.init_node('vehicle_controller')
         self.targ_angle_history = deque()
         self.target_angle = 0
+        self.sonar_data = 7
+
+        self.forward_vel = np.arange(0, 100, 10)
+        self.desired_vel = 0
+
         self.angle_error_sub = rospy.Subscriber('milaur/angle_error', Float64, self.got_target_angle)
+        self.sonar_data_sub = rospy.Subscriber('milaur/sonar', Sonar_Data, self.got_sonar_data)
         self.wheel_velocity_pub = rospy.Publisher('milaur/wheel_velocity', Wheel_Velocity, queue_size=1)
 
         rospy.sleep(2)  # Sleep while waiting for the publisher to make things happen
@@ -73,9 +81,13 @@ class Controller(object):
             rospy.sleep(d)
             print "Logging target angle"
             return
+
         # PID Control
         # Angle error
         angle_error = self.target_angle
+        right_wheel_vel = 0
+        left_wheel_vel = 0
+
         if np.abs(angle_error) > np.radians(5):
         
             # Approximate angular velocity
@@ -90,11 +102,44 @@ class Controller(object):
             # A positive angle error should induce a positive turn, and the opposite
             tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
             desired_torque = correction_const * tau
-            self.send_wheel_vel(desired_torque, -desired_torque)
+            #self.send_wheel_vel(desired_torque, -desired_torque)
+            right_wheel_vel = desired_torque
+            left_wheel_vel = -desired_torque
             print "Making a turn with a controller effort of ", desired_torque 
         else:
-            self.send_wheel_vel(0, 0)
+            right_wheel_vel = 0
+            left_wheel_vel = 0
             print "Going forward"
+
+        # Proportional control for forward velocity
+        # This is temp for now, need to get working
+        if (self.sonar_data != 0):
+            # If there is something in front of me, slow down
+            self.desired_vel = int(np.clip(self.desired_vel - 1, 0, len(self.forward_vel) - 1))
+        else:
+            # If there is not something in front of me, speed up
+            self.desired_vel = int(np.clip(self.desired_vel + 1, 0, len(self.forward_vel) - 1))
+
+        print "The desiered vel index: ", self.desired_vel
+        print "The desiered vel: ", self.forward_vel[self.desired_vel]
+
+        if (self.forward_vel[self.desired_vel] == 0):
+            self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
+        else:
+            # If we are going forward, scale wheel vels accordingly
+            right_wheel_vel = self.forward_vel[self.desired_vel] + right_wheel_vel
+            left_wheel_vel = self.forward_vel[self.desired_vel] + left_wheel_vel
+            self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
+
+        # TODO
+        '''
+        1) Store leftr and right wheel velocities
+        2) Bool statement on sonar_data
+            2a) If sonar is not 0, then turn in place
+            2b) If sonar is 0, then go forward
+        3) Add some sort of proportional control for forward velocity
+        4) If going forward, use turning PID to ratio between the wheels
+        '''
 
     def send_wheel_vel(self, right_wheel, left_wheel):
         '''Send wheel velocities to XMega
@@ -118,20 +163,9 @@ class Controller(object):
             else:
                 return float(clamped)
 
-        # left_wheel_rectified = np.clip(left_wheel, -100, 100)
-        # right_wheel_rectified = np.clip(right_wheel, -100, 100)
         left_wheel_vel = rectify_wheel_power(left_wheel, -100, 100)
         right_wheel_vel = rectify_wheel_power(right_wheel, -100, 100)
-        # if left_wheel_rectified < 0:
-            # left_wheel_char = chr(left_wheel_rectified + 256)
-        # else:
-            # left_wheel_char  
-        # if right_wheel_rectified < 0:
-            # right_wheel_char = chr(right_wheel_rectified + 256)
-        # else:
-        #print "sending_wheel_char ", left_wheel_char, right_wheel_char 
-        #message_data = left_wheel_char + right_wheel_char
-        #print "Sending a message as ", message_data
+
         msg = Wheel_Velocity(
             right_wheel = right_wheel_vel,
             left_wheel = left_wheel_vel
@@ -148,6 +182,21 @@ class Controller(object):
         if len(self.targ_angle_history) > self._targ_angle_hist_length:
             self.targ_angle_history.popleft()
         self.targ_angle_history.append(target_angle)
+
+    def got_sonar_data(self, msg):
+        ''' Sonar data is published already converted into cm
+        The minimum sonar value should be 20cm
+        The Ccontroller will threshold the sonar at 100cm
+        '''
+        sonar_data = 0
+        if(msg.left_sonar < self._sonar_data_threshold):
+            sonar_data |= 4
+        if(msg.middle_sonar < self._sonar_data_threshold):
+            sonar_data |= 2
+        if(msg.right_sonar < self._sonar_data_threshold):
+            sonar_data |= 1
+
+        self.sonar_data = sonar_data
 
 
 if __name__=='__main__':
