@@ -50,6 +50,7 @@ class Controller(object):
 
         '''
         rospy.init_node('vehicle_controller')
+        self.state = 0
         self.targ_angle_history = deque()
         self.target_angle = 0
         self.sonar_data = 7
@@ -57,8 +58,10 @@ class Controller(object):
         self.forward_vel = np.arange(0, 100, 10)
         self.desired_vel = 0
 
+        self.state_sub = rospy.Subscriber('milaur/state', Int16, self.change_state)
         self.angle_error_sub = rospy.Subscriber('milaur/angle_error', Float64, self.got_target_angle)
         self.sonar_data_sub = rospy.Subscriber('milaur/sonar', Sonar_Data, self.got_sonar_data)
+        self.state_pub = rospy.Publisher('milaur/state', Int16, queue_size=1)
         self.wheel_velocity_pub = rospy.Publisher('milaur/wheel_velocity', Wheel_Velocity, queue_size=1)
 
         rospy.sleep(2)  # Sleep while waiting for the publisher to make things happen
@@ -74,72 +77,68 @@ class Controller(object):
                                |
                           (-pi or pi)
         '''
-        # If we're not ready, continually send a motor stop message
-        if len(self.targ_angle_history) < self._targ_angle_hist_length//2:
-            self.send_wheel_vel(0, 0)
-            d = rospy.Duration(2, 0)
-            rospy.sleep(d)
-            print "Logging target angle"
-            return
 
-        # PID Control
-        # Angle error
-        angle_error = self.target_angle
-        right_wheel_vel = 0
-        left_wheel_vel = 0
+        if self.state == 1:
+            # Call service to facial recognition that changes the state if it finds a face
+            self.state_pub.publish(Int16(2))
 
-        if np.abs(angle_error) > np.radians(5):
-        
-            # Approximate angular velocity
-            angular_velocity = np.average(np.diff(self.targ_angle_history))
-            angular_integral = np.trapz(self.targ_angle_history)
+        elif self.state == 2:
+            # If we're not ready, continually send a motor stop message
+            if len(self.targ_angle_history) < self._targ_angle_hist_length//2:
+                self.send_wheel_vel(0, 0)
+                d = rospy.Duration(2, 0)
+                rospy.sleep(d)
+                print "Logging target angle"
+                return
 
-            # PID Gains, play with these if the robot jitters
-            p_gain = 25 #0.7
-            d_gain = 100 #0.3
-            i_gain = 10 #.01
-            correction_const = 1.0
-            # A positive angle error should induce a positive turn, and the opposite
-            tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
-            desired_torque = correction_const * tau
-            #self.send_wheel_vel(desired_torque, -desired_torque)
-            right_wheel_vel = desired_torque
-            left_wheel_vel = -desired_torque
-            print "Making a turn with a controller effort of ", desired_torque 
-        else:
+            # PID Control
+            # Angle error
+            angle_error = self.target_angle
             right_wheel_vel = 0
             left_wheel_vel = 0
-            print "Going forward"
 
-        # Proportional control for forward velocity
-        # This is temp for now, need to get working
-        if (self.sonar_data != 0):
-            # If there is something in front of me, slow down
-            self.desired_vel = int(np.clip(self.desired_vel - 1, 0, len(self.forward_vel) - 1))
-        else:
-            # If there is not something in front of me, speed up
-            self.desired_vel = int(np.clip(self.desired_vel + 1, 0, len(self.forward_vel) - 1))
+            if np.abs(angle_error) > np.radians(5):
+            
+                # Approximate angular velocity
+                angular_velocity = np.average(np.diff(self.targ_angle_history))
+                angular_integral = np.trapz(self.targ_angle_history)
 
-        print "The desiered vel index: ", self.desired_vel
-        print "The desiered vel: ", self.forward_vel[self.desired_vel]
+                # PID Gains, play with these if the robot jitters
+                p_gain = 25 #0.7
+                d_gain = 100 #0.3
+                i_gain = 10 #.01
+                correction_const = 1.0
+                # A positive angle error should induce a positive turn, and the opposite
+                tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
+                desired_torque = correction_const * tau
+                #self.send_wheel_vel(desired_torque, -desired_torque)
+                right_wheel_vel = desired_torque
+                left_wheel_vel = -desired_torque
+                print "Making a turn with a controller effort of ", desired_torque 
+            else:
+                right_wheel_vel = 0
+                left_wheel_vel = 0
+                print "Going forward"
 
-        if (self.forward_vel[self.desired_vel] == 0):
-            self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
-        else:
-            # If we are going forward, scale wheel vels accordingly
-            right_wheel_vel = self.forward_vel[self.desired_vel] + right_wheel_vel
-            left_wheel_vel = self.forward_vel[self.desired_vel] + left_wheel_vel
-            self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
+            # Proportional control for forward velocity
+            # This is temp for now, need to get working
+            if (self.sonar_data != 0):
+                # If there is something in front of me, slow down
+                self.desired_vel = int(np.clip(self.desired_vel - 1, 0, len(self.forward_vel) - 1))
+            else:
+                # If there is not something in front of me, speed up
+                self.desired_vel = int(np.clip(self.desired_vel + 1, 0, len(self.forward_vel) - 1))
 
-        # TODO
-        '''
-        1) Store leftr and right wheel velocities
-        2) Bool statement on sonar_data
-            2a) If sonar is not 0, then turn in place
-            2b) If sonar is 0, then go forward
-        3) Add some sort of proportional control for forward velocity
-        4) If going forward, use turning PID to ratio between the wheels
-        '''
+            print "The desiered vel index: ", self.desired_vel
+            print "The desiered vel: ", self.forward_vel[self.desired_vel]
+
+            if (self.forward_vel[self.desired_vel] == 0):
+                self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
+            else:
+                # If we are going forward, scale wheel vels accordingly
+                right_wheel_vel = self.forward_vel[self.desired_vel] + right_wheel_vel
+                left_wheel_vel = self.forward_vel[self.desired_vel] + left_wheel_vel
+                self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
 
     def send_wheel_vel(self, right_wheel, left_wheel):
         '''Send wheel velocities to XMega
@@ -197,6 +196,13 @@ class Controller(object):
             sonar_data |= 1
 
         self.sonar_data = sonar_data
+
+    def change_state(self, msg):
+        '''
+        Simple callback function to change states
+        '''
+        state = msg.data
+        self.state = state
 
 
 if __name__=='__main__':

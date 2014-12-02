@@ -67,6 +67,7 @@ class Xmega_Driver(object):
         # Add ROS elements
         #self.accel_data_pub = rospy.Publisher('robot/imu', Imu, queue_size=1)
         self.sonar_data_pub = rospy.Publisher('/milaur/sonar', Sonar_Data, queue_size=1)
+        self.state_pub = rospy.Publisher('milaur/state', Int16, queue_size=1)
 
         # Messages being sent from ROS to the XMega
         # To add a ROS->XMega message, you must...
@@ -88,6 +89,9 @@ class Xmega_Driver(object):
 
         # Start message
         self.send_start_msg()
+
+        # Start TowBot
+        self.state_pub.publish(Int16(1))
 
         # Relinquish control of the program - this is an infinite loop
         self.serial_proxy.run_serial_loop()
@@ -144,76 +148,6 @@ class Xmega_Driver(object):
             right_sonar = ((ord(msg_data[5])<<8) + ord(msg_data[4])) * 0.49849
         )
         self.sonar_data_pub.publish(msg)
-
-    '''
-    def got_imu_reading(self, msg_data):
-        Handle data read from the IMU
-        The IMU we have is 9-DOF, meaning that it reads:
-            Linear acceleration in XYZ
-            Rotational velocity in XYZ
-            Gyroscope Readings in X and Y axis
-            Magnetometer/Compass readings around Z axis
-
-        We also found some spare IMUs that additionally read barometric altitude
-
-        IMU Message:
-            std_msgs/Header header
-            geometry_msgs/Quaternion orientation
-            float64[9] orientation_covariance
-            geometry_msgs/Vector3 angular_velocity
-            float64[9] angular_velocity_covariance
-            geometry_msgs/Vector3 linear_acceleration
-            float64[9] linear_acceleration_covariance
-        
-        # Where vel -> velocity, and acc -> acceleration
-        decomposition = {
-            'lin_acc_x': 0,
-            'lin_acc_y': 0,
-            'lin_acc_z': 0,
-            'ang_vel_x': 0,
-            'ang_vel_y': 0,
-            'ang_vel_z': 0,
-            'bearing': 0,
-            'barometric_altitude': 0,
-        }
-        angular_vel = (
-            decomposition['ang_vel_x'],
-            decomposition['ang_vel_y'],
-            decomposition['ang_vel_z'],
-        )
-        linear_acc = (
-            decomposition['lin_acc_x'],
-            decomposition['lin_acc_y'],
-            decomposition['lin_acc_z'],
-        )
-
-        orientation = tf_trans.quaternion_from_euler(0, 0, decomposition['bearing'])
-        IMU_msg = Imu(
-            header=Header(
-                stamp=rospy.Time.now(),
-                frame_id='/robot',
-            ),
-            orientation=Quaternion(*orientation), 
-            orientation_covariance=
-                [0.03**2, 0,       0,
-                 0,       0.03**2, 0,
-                 0,       0,       0.03**2,],
-            angular_velocity=Vector3(*angular_vel),
-            angular_velocity_covariance=
-                [0.03**2, 0,       0,
-                 0,       0.03**2, 0,
-                 0,       0,       0.03**2,],
-
-            linear_acceleration=Vector3(*linear_acc),
-            linear_acceleration_covariance=
-                [0.03**2, 0,       0,
-                 0,       0.03**2, 0,
-                 0,       0,       0.03**2,],
-        )
-
-        self.accel_data_pub()
-     '''
-
 
 if __name__ == '__main__':
     usage_msg = "Serial interface with the XMega128A1U for the IEEE2015 team"
