@@ -37,7 +37,7 @@ class Xmega_Driver(object):
             - Unk: Non-Wheel control motors (Set torque)
             - 4-5x: Servos (Arm and a few places, set angle)
             - 4x: Status LED's (Toggle)
-        cccccccccc    - 1-2x: Solenoids (Go, no-go!)
+            - 1-2x: Solenoids (Go, no-go!)
 
         TODO:
             - Add better threading locks (ones that don't cause message loss)
@@ -154,6 +154,9 @@ class Xmega_Driver(object):
         print "Recieved decoder data!!!"
         print "Recieved decoder data!!!"
         print "Recieved decoder data!!!"
+
+        for data in msg_data:
+            print ord(data)
 
 if __name__ == '__main__':
     usage_msg = "Serial interface with the XMega128A1U for the IEEE2015 team"
