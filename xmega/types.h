@@ -5,10 +5,16 @@
 #ifndef _IEEE_TYPES_H_
 #define _IEEE_TYPES_H_
 
-/* Masks and Bit Definitons 
-The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/parse_types)
+/* Masks and Bit Definitons
+The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/xmega_driver/parse_types.py)
+White space is not extremely important, but please obey the conventions of "parameter: value"
+
+DO NOT have inline comments on a line with a #define statement if they are not for ROS control.
+
+
 */
 //Message Data length is first two bits of type field
+//--> Parse types reads this to determine what message length types exist
 #define DATA_MASK             0xC0 // mask: data
 #define NO_DATA_TYPE          0x00 // msg_length: 0
 #define DATA_1B_TYPE          0x40 // msg_length: 1
@@ -17,7 +23,7 @@ The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/parse_types)
 
 //Error Types must have 11 as bits 6 and 5
 #define ERROR_MASK            0x30 // mask: error
-#define ERROR_TYPE            0x30 
+#define ERROR_TYPE            0x30
 #define IS_ERROR_TYPE(x)      ((x & ERROR_MASK) == ERROR_TYPE)
 
 
@@ -25,7 +31,7 @@ The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/parse_types)
 //NO_DATA_TYPE messages [0x01-0x2F]
 #define KILL_TYPE             0x01 // out: kill
 #define START_TYPE            0x02 // out: start
-#define KEEP_ALIVE_TYPE       0x03 // out: keep_alive
+#define KEEP_ALIVE_TYPE       0x03 // out: keep_alive; in: keep_alive
 #define IMU_NOTIFY_TYPE       0x04 // out: poll_imu
 
 

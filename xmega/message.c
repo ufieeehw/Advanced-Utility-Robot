@@ -54,7 +54,7 @@ void init_msg_queue(){
   data_cache_map[DATA_CACHE_1B] = 0x7FFFFFFF; //first bit is null
   data_cache_map[DATA_CACHE_2B] = 0xAAAAAAAA;
   data_cache_map[DATA_CACHE_4B] = 0x88888888;
-  data_cache_map[DATA_CACHE_4B] = 0x82082080;
+  data_cache_map[DATA_CACHE_6B] = 0x82082080;
   data_cache_map[DATA_CACHE_12B] = 0x80080000;
   msg_cache_map = 0xFFFFFFFF;
 }

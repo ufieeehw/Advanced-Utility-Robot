@@ -36,7 +36,7 @@ int start_msg(Message m){
   
   //start the watchdog timer (1 second timeout)
   CCP = CCP_IOREG_gc; //enable protected access
-  WDT.CTRL = WDT_ENABLE_bm | WDT_CEN_bm | 0x1C;
+  WDT.CTRL = WDT_ENABLE_bm | WDT_CEN_bm | WDT_PER_1KCLK_gc;
   
   //send ACK message
   Message out = get_msg(START_TYPE, 0);

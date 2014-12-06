@@ -270,9 +270,9 @@ ISR(RTC_OVF_vect){
 
 	// Send decoder data to ROS
 	Message out = get_msg(DECODER_DATA_TYPE, 4);
-	*out.data = count_left;
-	*(out.data + 1) = count_left >> 8;
-	*(out.data + 2) = count_right;
-	*(out.data + 3) = count_right >> 8;
+	*out.data = 111;//count_left;
+	*(out.data + 1) = 222;//count_left >> 8;
+	*(out.data + 2) = 111;//count_right;
+	*(out.data + 3) = 222;//count_right >> 8;
 	queue_push(out,OUT_QUEUE);  //send ack
 }

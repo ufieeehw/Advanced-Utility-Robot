@@ -53,28 +53,28 @@ int (*data_nb_func[DATA_NB_ARRAY_SIZE]) (Message m) = {
  
 //placeholder function will report errors, returns queue status (also good example function)
 int no_func(Message m){
-  if(IS_ERROR_TYPE(m.type)){  //misdirected error, bounce to out_queue
-    //need to copy the data buffer otherwise it will be deleted on return
-    Message m_out = m;  //create a copy of the message
-    if((m.type & DATA_MASK) != NO_DATA_TYPE){
-      m_out.data = malloc(m.size);  //allocate new buffer space
-      memcpy(m_out.data, m.data, m.size); //copy data
-    }
-    return queue_push(m_out,OUT_QUEUE); //bounce to outgoing queue
-  }
-  
-  //otherwise pack new error message
-  Message m_out;
-  m_out.type = VECTOR_ERROR_TYPE;  //set type
-  m_out.size = ((m.type & DATA_MASK) == DATA_NB_TYPE)? m.size+2 : m.size+1;  //get the size
-  m_out.data = malloc(m_out.size);  //allocate space
-  m_out.data[0] = m.type;  //copy the type field
-  if((m.type & DATA_MASK) == DATA_NB_TYPE){  //NB_types send a size field
-    m_out.data[1] = m.size;
-    memcpy(m_out.data+2,m.data,m_out.size-2);
-  } else {  //other types don't send size field
-    memcpy(m_out.data+1,m.data,m_out.size-1);
-  }
-  
-  return queue_push(m_out,OUT_QUEUE);  //add the message to the queue
+	if(IS_ERROR_TYPE(m.type)){  //misdirected error, bounce to out_queue
+		//need to copy the data buffer otherwise it will be deleted on return
+		Message m_out = m;  //create a copy of the message
+		if((m.type & DATA_MASK) != NO_DATA_TYPE){
+			m_out.data = malloc(m.size);  //allocate new buffer space
+			memcpy(m_out.data, m.data, m.size); //copy data
+		}
+		return queue_push(m_out,OUT_QUEUE); //bounce to outgoing queue
+	}
+	
+	//otherwise pack new error message
+	Message m_out;
+	m_out.type = VECTOR_ERROR_TYPE;  //set type
+	m_out.size = ((m.type & DATA_MASK) == DATA_NB_TYPE)? m.size+2 : m.size+1;  //get the size
+	m_out.data = malloc(m_out.size);  //allocate space
+	m_out.data[0] = m.type;  //copy the type field
+	if((m.type & DATA_MASK) == DATA_NB_TYPE){  //NB_types send a size field
+		m_out.data[1] = m.size;
+		memcpy(m_out.data+2,m.data,m_out.size-2);
+		} else {  //other types don't send size field
+		memcpy(m_out.data+1,m.data,m_out.size-1);
+	}
+	
+	return queue_push(m_out,OUT_QUEUE);  //add the message to the queue
 }
