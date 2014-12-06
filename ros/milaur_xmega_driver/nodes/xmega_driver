@@ -4,6 +4,9 @@ from __future__ import division # Make all division floating point division
 # Misc
 import os
 import argparse
+import struct
+## Math
+import numpy as np
 
 # Ros
 import rospy
@@ -64,7 +67,7 @@ class Xmega_Driver(object):
         )
 
         # Add ROS elements
-        self.encoder_data_pub = rospy.Publisher('milaur/decoder', Decoder_Data, queue_size=1)
+        self.decoder_data_pub = rospy.Publisher('/milaur/decoder', Decoder_Data, queue_size=1)
         self.sonar_data_pub = rospy.Publisher('/milaur/sonar', Sonar_Data, queue_size=1)
         self.state_pub = rospy.Publisher('milaur/state', Int16, queue_size=1)
 
@@ -125,7 +128,7 @@ class Xmega_Driver(object):
         The conversion is as follows:
             Vin = RES * ((VREF * VDIV)/TOP)
 
-            VREF is defined at 3.3V/1.6V = 20625V
+            VREF is defined at 3.3V/1.6V = 2.0625V
             VDIV = (47 + 33)/33 = 2.424242
             TOP = 2^12/2 = 2047
             Vin = RES * 0.002443
@@ -141,22 +144,33 @@ class Xmega_Driver(object):
          multiply it by 0.49849.
         '''
 
+        ''' Leftover from 6 BYTE messages
         msg = Sonar_Data(
             left_sonar = ((ord(msg_data[1])<<8) + ord(msg_data[0])) * 0.49849,
             middle_sonar = ((ord(msg_data[3])<<8) + ord(msg_data[2])) * 0.49849,
             right_sonar = ((ord(msg_data[5])<<8) + ord(msg_data[4])) * 0.49849
         )
+        '''
+
+        # Testing at 8 bit res w/ 4 byte msgs
+        msg = Sonar_Data(
+            left_sonar = ord(msg_data[0]) * 8.03471,
+            middle_sonar = ord(msg_data[1]) * 8.03471,
+            right_sonar = ord(msg_data[2]) * 8.03471
+        )
         self.sonar_data_pub.publish(msg)
 
     def got_decoder_data(self, msg_data):
-        print "Recieved decoder data!!!"
-        print "Recieved decoder data!!!"
-        print "Recieved decoder data!!!"
-        print "Recieved decoder data!!!"
-        print "Recieved decoder data!!!"
+        '''
+        TODO: Put userful information here
+        data is published in meters per second
+        '''
+        msg = Decoder_Data(
+            left_wheel = ((struct.unpack(">h", msg_data[1] + msg_data[0])[0])/360) * 0.32766 * np.pi,
+            right_wheel = ((struct.unpack(">h", msg_data[3] + msg_data[2])[0])/360) * 0.32766 * np.pi
+        )
 
-        for data in msg_data:
-            print ord(data)
+        self.decoder_data_pub.publish(msg)
 
 if __name__ == '__main__':
     usage_msg = "Serial interface with the XMega128A1U for the IEEE2015 team"
