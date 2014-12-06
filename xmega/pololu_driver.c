@@ -1,4 +1,6 @@
 #include "pololu_driver.h"
+#include "message.h"
+#include "types.h"
 
 // Pololu period variables. Assuming 32MHz to set
 //  PWM to 40kHz.
@@ -32,6 +34,21 @@ pololu_t pololu_right = {
 
 
 void pololuInit(void){
+	//TESTING CODE
+	PORTD.DIRSET = 0x01;
+	PORTD.OUTSET = 0x01;
+	
+	// Set up RTC to handle RPM calculations	
+	OSC.CTRL |= OSC_RC32KEN_bm;   /* Set internal 32kHz as source. */
+	while ( !( OSC_STATUS & OSC_RC32KRDY_bm ) ); /* Wait for the int. 32kHz oscillator to stabilize. */
+	
+	while( ( RTC_STATUS & 0x01 ) ); // Needed before writing to RTC PER / CNT registers	
+	RTC.PER = 28;
+	RTC.CTRL = RTC_PRESCALER_DIV1_gc;
+	RTC.INTCTRL = RTC_OVFINTLVL_MED_gc;
+	
+	CLK_RTCCTRL = CLK_RTCSRC_RCOSC32_gc | CLK_RTCEN_bm;
+	
 	// LEFT MOTOR
 	pololu_left.PORT->DIR = 0xCF;								// Set PORT directions
 	pololu_left.PORT->OUT = 0x0E;								// Set initial outputs
@@ -49,6 +66,19 @@ void pololuInit(void){
 	pololu_right.TC0->CTRLB |= 0x10 | TC_WGMODE_SINGLESLOPE_gc; // Enable single slope PWM. Enable OC A.
 	pololu_right.TC0->PER = PERIOD;    							// PER = (40kHz*2MHz)/1 = 50
 	pololu_right.TC0->CCA = MAGNITUDE;
+	
+	//LEFT MOTOR
+	QDEC_Total_Setup(pololu_left.PORT,
+					 6,
+					 false,
+					 0,
+					 EVSYS_CHMUX_PORTE_PIN6_gc,
+					 false,
+					 EVSYS_QDIRM_00_gc,
+					 pololu_left.TC1,
+					 TC_EVSEL_CH0_gc,
+					 360
+	);
 }
 
 
@@ -228,4 +258,21 @@ uint8_t QDEC_Get_Direction(TC1_t * qTimer)
 	}else{
 		return CCW_DIR;
 	}
+}
+
+ISR(RTC_OVF_vect){
+	volatile uint16_t count_left = pololu_left.TC1->CNT;
+	volatile uint16_t count_right = pololu_left.TC1->CNT;
+	PORTD.OUTTGL = 0x01;
+	count_left = count_left << 3;
+	count_right = count_left;
+	pololu_left.TC1->CNT = 0;
+
+	// Send decoder data to ROS
+	Message out = get_msg(DECODER_DATA_TYPE, 4);
+	*out.data = count_left;
+	*(out.data + 1) = count_left >> 8;
+	*(out.data + 2) = count_right;
+	*(out.data + 3) = count_right >> 8;
+	queue_push(out,OUT_QUEUE);  //send ack
 }

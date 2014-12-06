@@ -38,7 +38,7 @@ The comments afterward are parsed by ROS (ieee2015_xmega_driver/src/parse_types)
 
 
 //DATA_NB_TYPE messages [0xC0-0xEF]
-
+#define DECODER_DATA_TYPE		0xEE // in: decoder_data
 #define SONAR_DATA_TYPE         0xEF // in: sonar_data
 
 

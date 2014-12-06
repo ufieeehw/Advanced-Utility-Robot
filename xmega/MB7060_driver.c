@@ -70,10 +70,6 @@ void MB7060_INIT(void){
 	
 	PMIC.CTRL |= PMIC_MEDLVLEN_bm; //Enable medium level interrupts for receiver
 	sei();  //Enable global interrupts
-	
-	//TESTING CODE
-	PORTD.DIRSET = 0x03;
-	PORTD.OUTSET = 0x03;
 }
 
 
