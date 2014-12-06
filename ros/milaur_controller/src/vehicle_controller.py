@@ -34,8 +34,8 @@ def xyzw_array(quaternion):
 
 
 class Controller(object):
-    _targ_angle_hist_length = 25  # Length of deque for derivative and integral PID terms
-    _sonar_data_threshold = 100   # Threshold for the sonars
+    _targ_angle_hist_length = 50  # Length of deque for derivative and integral PID terms
+    _sonar_data_threshold = 125   # Threshold for the sonars
 
     def __init__(self):
         '''This is the controller object for the MIL Advanced 
@@ -55,7 +55,7 @@ class Controller(object):
         self.target_angle = 0
         self.sonar_data = 7
 
-        self.forward_vel = np.arange(0, 100, 10)
+        self.forward_vel = np.arange(0, 50, 20)
         self.desired_vel = 0
 
         self.state_sub = rospy.Subscriber('milaur/state', Int16, self.change_state)
@@ -79,8 +79,8 @@ class Controller(object):
         '''
 
         if self.state == 1:
-            # Call service to facial recognition that changes the state if it finds a face
-            self.state_pub.publish(Int16(2))
+            # Don't do anything here. Vision will change to state 2.
+            pass
 
         elif self.state == 2:
             # If we're not ready, continually send a motor stop message
@@ -97,16 +97,16 @@ class Controller(object):
             right_wheel_vel = 0
             left_wheel_vel = 0
 
-            if np.abs(angle_error) > np.radians(5):
+            if np.abs(angle_error) > np.radians(4):
             
                 # Approximate angular velocity
                 angular_velocity = np.average(np.diff(self.targ_angle_history))
                 angular_integral = np.trapz(self.targ_angle_history)
 
                 # PID Gains, play with these if the robot jitters
-                p_gain = 25 #0.7
-                d_gain = 100 #0.3
-                i_gain = 10 #.01
+                p_gain = 10 #0.7
+                d_gain = 6 #0.3
+                i_gain = 3 #.01
                 correction_const = 1.0
                 # A positive angle error should induce a positive turn, and the opposite
                 tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
@@ -122,6 +122,10 @@ class Controller(object):
 
             # Proportional control for forward velocity
             # This is temp for now, need to get working
+            if(self.sonar_data == -1):
+                self.send_wheel_vel(0, 0)
+                return
+
             if (self.sonar_data != 0):
                 # If there is something in front of me, slow down
                 self.desired_vel = int(np.clip(self.desired_vel - 1, 0, len(self.forward_vel) - 1))
@@ -162,8 +166,8 @@ class Controller(object):
             else:
                 return float(clamped)
 
-        left_wheel_vel = rectify_wheel_power(left_wheel, -100, 100)
-        right_wheel_vel = rectify_wheel_power(right_wheel, -100, 100)
+        left_wheel_vel = rectify_wheel_power(left_wheel, -50, 50)
+        right_wheel_vel = rectify_wheel_power(right_wheel, -50, 50)
 
         msg = Wheel_Velocity(
             right_wheel = right_wheel_vel,
@@ -194,6 +198,10 @@ class Controller(object):
             sonar_data |= 2
         if(msg.right_sonar < self._sonar_data_threshold):
             sonar_data |= 1
+
+
+        if(msg.left_sonar < 75 or msg.middle_sonar < 75 or msg.right_sonar < 75):
+            sonar_data = -1
 
         self.sonar_data = sonar_data
 

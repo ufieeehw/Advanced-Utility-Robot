@@ -6,6 +6,10 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 
+// Include ROS service
+#include "milaur_vision/FindFace.h"
+#include <std_msgs/Int16.h>
+
 // OpenCV Headers
 #include "opencv2/core/core.hpp"
 #include "opencv2/contrib/contrib.hpp"
@@ -27,6 +31,9 @@ const string window_name = "Capture - Face detection";
 const String face_cascade_name = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
 const string fn_csv = "/home/baylis/Desktop/FaceRecognition/csv_file.txt";
 
+
+static bool processing;
+
 class FaceRecognition
 {
     boost::mutex mtx_;
@@ -36,7 +43,10 @@ public:
     image_transport::ImageTransport it_;
     image_transport::Subscriber im_sub_;
     image_transport::Publisher im_pub_;
-    //ros::Publisher bb_pub;  
+    ros::Publisher pub;
+    ros::Subscriber sub;
+
+    ros::ServiceServer service;
 
     /** Global variables */
     cv::Mat bgr_img_orig;
@@ -51,12 +61,18 @@ public:
 
     CascadeClassifier face_cascade;
 
+
     FaceRecognition()
         :   it_(nh_)
     {
         // Subscribe to the raw image
         im_sub_ = it_.subscribe("milaur_cam/image_raw", 1, &FaceRecognition::imageCallback, this);
-        im_pub_ = it_.advertise("/milaur_cam/converted_image", 1);
+
+        sub = nh_.subscribe("milaur/state", 1, &FaceRecognition::startFaceRec, this);
+        pub = nh_.advertise<std_msgs::Int16>("milaur/state", 1);
+
+        // Advertise the service
+        //service = nh_.advertiseService("milaur_vision/find_face", &FaceRecognition::find_face, this);
 
         // Read in the data (fails if no valid input filename is given, but you'll get an error message):
         try {
@@ -83,9 +99,6 @@ public:
             ROS_ERROR("milaur_vision::facerec.cpp::Error loading face cascade");
             exit(1); 
         };
-
-        boost::thread processthread;
-        processthread = boost::thread(boost::bind(&FaceRecognition::imageProcessing, this));
     }
 
     static void read_csv(const string& filename, vector<Mat>& images, vector<int>& labels, char separator = ';') {
@@ -128,15 +141,27 @@ public:
         bgr_img_orig = cv_ptr->image;
     }
 
+    void startFaceRec(const std_msgs::Int16& msg){
+        if(msg.data == 1){
+            ROS_INFO("milaur_vision_node::facerec.cpp::processing service::ENTERED");
+            processing = true;
+            boost::thread processthread;
+            processthread = boost::thread(boost::bind(&FaceRecognition::imageProcessing, this));
+        }
+    }
+
     void imageProcessing()
     {
         /*
         Thread to process the most recent image recieved from ROS
         */
         ROS_INFO("milaur_vision_node::facerec.cpp::processing thread::ENTERED");
-        cv::namedWindow(window_name);
+        //cv::namedWindow(window_name);
 
-        while(true){
+        int current_face = -1;
+        int frame_count = 0;
+
+        while(frame_count < 2){
             if(!(bgr_img_orig.empty())){
                 cv::Mat current_img = bgr_img_orig;
                 cv::Mat frame_gray;
@@ -169,33 +194,50 @@ public:
                     double confidence = 0.0;
 
                     model->predict(face_resized, predictedLabel, confidence);
-                    // And finally write all we've found out to the original image!
 
                     if (confidence < 200)
                     {
-                        // First of all draw a green rectangle around the detected face:
-                        rectangle(current_img, face_i, CV_RGB(0, 255,0), 1);
-                        // Create the text we will annotate the box with:
-                        string prediction_text = format("Prediction = %d", predictedLabel);
-                        string confidence_text = format("Confidence = %f", confidence);
-                        // Calculate the position for annotated text (make sure we don't
-                        // put illegal values in there):
-                        int prediction_pos_x = std::max(face_i.tl().x - 10, 0);
-                        int prediction_pos_y = std::max(face_i.tl().y - 10, 0);
-                        int confidence_pos_x = prediction_pos_x;
-                        int confidence_pos_y = std::max(face_i.height + 25, 0) + prediction_pos_y;
-                        // And now put it into the image:
-                        putText(current_img, prediction_text, Point(prediction_pos_x, prediction_pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
-                        putText(current_img, confidence_text, Point(confidence_pos_x, confidence_pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
+                        ROS_INFO("milaur_vision_node::facerec.cpp::processing thread::PREDICTION: %d", predictedLabel);
+                        ROS_INFO("milaur_vision_node::facerec.cpp::processing thread::COUNT: %d", frame_count);
+                        if(current_face == predictedLabel && predictedLabel != -1){
+                            frame_count += 1;
+                        } else{
+                            current_face = predictedLabel;
+                            frame_count = 1;
+                        }
+
+                        // // First of all draw a green rectangle around the detected face:
+                        // rectangle(current_img, face_i, CV_RGB(0, 255,0), 1);
+                        // // Create the text we will annotate the box with:
+                        // string prediction_text = format("Prediction = %d", predictedLabel);
+                        // string confidence_text = format("Confidence = %f", confidence);
+                        // // Calculate the position for annotated text (make sure we don't
+                        // // put illegal values in there):
+                        // int prediction_pos_x = std::max(face_i.tl().x - 10, 0);
+                        // int prediction_pos_y = std::max(face_i.tl().y - 10, 0);
+                        // int confidence_pos_x = prediction_pos_x;
+                        // int confidence_pos_y = std::max(face_i.height + 25, 0) + prediction_pos_y;
+                        // // And now put it into the image:
+                        // putText(current_img, prediction_text, Point(prediction_pos_x, prediction_pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
+                        // putText(current_img, confidence_text, Point(confidence_pos_x, confidence_pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
                         // TEST: Not sure if I need this break or not
                         break;
+                    } else {
+                        // If milaur doesn't see a face, reset count
+                        frame_count = 0;
                     }
                 }
-                
-                cv::imshow(window_name, current_img);
-                cv::waitKey(3);
+                // cv::imshow(window_name, current_img);
+                // cv::waitKey(1);
             }
         }
+
+        std_msgs::Int16 new_msg;
+        new_msg.data = 2;
+
+        pub.publish(new_msg);
+
+        ROS_INFO("milaur_vision_node::facerec.cpp::processing thread::EXITING");
     }
 };
 
