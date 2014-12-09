@@ -22,7 +22,9 @@ class Navigator(object):
         rospy.init_node('navigation')
         self.logitech_listener = rospy.Subscriber('milaur_cam/image_raw', Image, self.process_image)
         self.state_sub = rospy.Subscriber('milaur/state', Int16, self.change_state)
+
         self.direction_pub = rospy.Publisher('milaur/angle_error', Float64, queue_size=1)
+        self.state_pub = rospy.Publisher('milaur/state', Int16, queue_size=1)
 
         # create ROS to CV bridge
         self.bridge = CvBridge()
@@ -32,6 +34,7 @@ class Navigator(object):
         self.lower_pink = np.array([160, 130, 100], dtype=np.uint8)
 
         self.state = 0
+        self.count = 0
 
         
     def process_image(self, msg):
@@ -64,9 +67,18 @@ class Navigator(object):
             contours, hierarchy =cv2.findContours(mask,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
             # If no objects found, just leave
+            # TODO: Need to determine if I should publish if image not found
             if len(contours) == 0:
                 self.send_target_angle(0)
+                self.count += 1;
+
+                # If the vest is lost for 10 frames, change state to 1
+                if self.count > 10:
+                    self.state_pub.publish(Int16(1))
+                    self.count = 0
                 return
+            else:
+                self.count = 0;
 
             # Find the index of the largest contour
             areas = [cv2.contourArea(c) for c in contours]

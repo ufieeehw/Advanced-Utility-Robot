@@ -12,7 +12,7 @@ import rospy
 ## Ros msgs
 from std_msgs.msg import Header, Int16, Bool, String, Float64
 from geometry_msgs.msg import Pose, PoseStamped, Twist, TwistStamped, Vector3
-from milaur_controller.msg import Wheel_Velocity
+from milaur_controller.msg import Wheel_Velocity, Decoder_Data
 from milaur_navigation.msg import Sonar_Data
 
 
@@ -34,7 +34,9 @@ def xyzw_array(quaternion):
 
 
 class Controller(object):
-    _targ_angle_hist_length = 50  # Length of deque for derivative and integral PID terms
+    _targ_angle_hist_length = 25  # Length of deque for derivative and integral PID terms
+    _wheel_vel_hist_length = 25
+    
     _sonar_data_threshold = 125   # Threshold for the sonars
 
     def __init__(self):
@@ -50,17 +52,26 @@ class Controller(object):
 
         '''
         rospy.init_node('vehicle_controller')
+        
         self.state = 0
+
         self.targ_angle_history = deque()
         self.target_angle = 0
         self.sonar_data = 7
 
-        self.forward_vel = np.arange(0, 50, 20)
+        # variables for wheel velocity
+        self.left_wheel_history = deque()
+        self.right_wheel_history = deque()
+        self.forward_vel = 0
         self.desired_vel = 0
 
+        # ROS Subscribers
         self.state_sub = rospy.Subscriber('milaur/state', Int16, self.change_state)
         self.angle_error_sub = rospy.Subscriber('milaur/angle_error', Float64, self.got_target_angle)
         self.sonar_data_sub = rospy.Subscriber('milaur/sonar', Sonar_Data, self.got_sonar_data)
+        self.decoder_data_sub = rospy.Subscriber('milaur/decoder', Decoder_Data, self.got_decoder_data)
+
+        # ROS Publishers
         self.state_pub = rospy.Publisher('milaur/state', Int16, queue_size=1)
         self.wheel_velocity_pub = rospy.Publisher('milaur/wheel_velocity', Wheel_Velocity, queue_size=1)
 
@@ -78,39 +89,41 @@ class Controller(object):
                           (-pi or pi)
         '''
 
+        # If we're not ready, continually send a motor stop message
+        if len(self.targ_angle_history) < self._targ_angle_hist_length//2:
+            self.send_wheel_vel(0, 0)
+            d = rospy.Duration(2, 0)
+            rospy.sleep(d)
+            print "Logging target angle"
+            return
+
         if self.state == 1:
             # Don't do anything here. Vision will change to state 2.
+            self.send_wheel_vel(0, 0)
             pass
 
         elif self.state == 2:
-            # If we're not ready, continually send a motor stop message
-            if len(self.targ_angle_history) < self._targ_angle_hist_length//2:
-                self.send_wheel_vel(0, 0)
-                d = rospy.Duration(2, 0)
-                rospy.sleep(d)
-                print "Logging target angle"
-                return
-
             # PID Control
             # Angle error
             angle_error = self.target_angle
             right_wheel_vel = 0
             left_wheel_vel = 0
 
-            if np.abs(angle_error) > np.radians(4):
-            
+            if np.abs(angle_error) > np.radians(5):
                 # Approximate angular velocity
                 angular_velocity = np.average(np.diff(self.targ_angle_history))
                 angular_integral = np.trapz(self.targ_angle_history)
 
                 # PID Gains, play with these if the robot jitters
-                p_gain = 10 #0.7
-                d_gain = 6 #0.3
-                i_gain = 3 #.01
+                p_gain = 20 # 0.7
+                d_gain = 10 # 0.3
+                i_gain = 0.5 # .01
                 correction_const = 1.0
+
                 # A positive angle error should induce a positive turn, and the opposite
                 tau = (p_gain * angle_error) + (d_gain * angular_velocity) + (i_gain * angular_integral)
                 desired_torque = correction_const * tau
+
                 #self.send_wheel_vel(desired_torque, -desired_torque)
                 right_wheel_vel = desired_torque
                 left_wheel_vel = -desired_torque
@@ -120,6 +133,9 @@ class Controller(object):
                 left_wheel_vel = 0
                 print "Going forward"
 
+            self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
+
+            '''
             # Proportional control for forward velocity
             # This is temp for now, need to get working
             if(self.sonar_data == -1):
@@ -143,6 +159,7 @@ class Controller(object):
                 right_wheel_vel = self.forward_vel[self.desired_vel] + right_wheel_vel
                 left_wheel_vel = self.forward_vel[self.desired_vel] + left_wheel_vel
                 self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
+            '''
 
     def send_wheel_vel(self, right_wheel, left_wheel):
         '''Send wheel velocities to XMega
@@ -166,8 +183,8 @@ class Controller(object):
             else:
                 return float(clamped)
 
-        left_wheel_vel = rectify_wheel_power(left_wheel, -50, 50)
-        right_wheel_vel = rectify_wheel_power(right_wheel, -50, 50)
+        left_wheel_vel = rectify_wheel_power(left_wheel, -100, 100)
+        right_wheel_vel = rectify_wheel_power(right_wheel, -100, 100)
 
         msg = Wheel_Velocity(
             right_wheel = right_wheel_vel,
@@ -180,7 +197,11 @@ class Controller(object):
         These angles should be on the interval [-pi, pi]
         The controller will attempt to rotate the robot until the angle error is zero
         '''
-        target_angle = msg.data
+        if np.abs(msg.data) > np.radians(6):
+            target_angle = msg.data
+        else:
+            target_angle = 0
+
         self.target_angle = target_angle
         if len(self.targ_angle_history) > self._targ_angle_hist_length:
             self.targ_angle_history.popleft()
@@ -205,12 +226,17 @@ class Controller(object):
 
         self.sonar_data = sonar_data
 
+    def got_decoder_data(self, msg):
+        msg.right_wheel
+        msg.left_wheel
+
     def change_state(self, msg):
         '''
         Simple callback function to change states
         '''
         state = msg.data
         self.state = state
+        print "Changing State: ", state
 
 
 if __name__=='__main__':
@@ -218,6 +244,7 @@ if __name__=='__main__':
     while(not rospy.is_shutdown()):
         try:
             controller.run()
+
             # Wait a bit
             rospy.sleep(0.2)
         except rospy.ROSInterruptException:
