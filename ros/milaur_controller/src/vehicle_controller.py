@@ -62,8 +62,10 @@ class Controller(object):
         # variables for wheel velocity
         self.left_wheel_history = deque()
         self.right_wheel_history = deque()
-        self.forward_vel = 0
-        self.desired_vel = 0
+        self.left_vel = 0
+        self.right_vel = 0
+        self.des_left_vel = 0
+        self.des_right_vel = .5
 
         # ROS Subscribers
         self.state_sub = rospy.Subscriber('milaur/state', Int16, self.change_state)
@@ -91,15 +93,15 @@ class Controller(object):
 
         # If we're not ready, continually send a motor stop message
         if len(self.targ_angle_history) < self._targ_angle_hist_length//2:
-            self.send_wheel_vel(0, 0)
+            #self.send_wheel_vel(0, 0)
             d = rospy.Duration(2, 0)
             rospy.sleep(d)
             print "Logging target angle"
-            return
+            #return
 
         if self.state == 1:
             # Don't do anything here. Vision will change to state 2.
-            self.send_wheel_vel(0, 0)
+            #self.send_wheel_vel(0, 0)
             pass
 
         elif self.state == 2:
@@ -133,9 +135,9 @@ class Controller(object):
                 left_wheel_vel = 0
                 print "Going forward"
 
-            self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
+        #self.send_wheel_vel(self.left_vel, self.right_vel)
 
-            '''
+        '''
             # Proportional control for forward velocity
             # This is temp for now, need to get working
             if(self.sonar_data == -1):
@@ -159,7 +161,7 @@ class Controller(object):
                 right_wheel_vel = self.forward_vel[self.desired_vel] + right_wheel_vel
                 left_wheel_vel = self.forward_vel[self.desired_vel] + left_wheel_vel
                 self.send_wheel_vel(right_wheel_vel, left_wheel_vel)
-            '''
+        '''
 
     def send_wheel_vel(self, right_wheel, left_wheel):
         '''Send wheel velocities to XMega
@@ -227,8 +229,57 @@ class Controller(object):
         self.sonar_data = sonar_data
 
     def got_decoder_data(self, msg):
-        msg.right_wheel
-        msg.left_wheel
+        '''
+        Set up wheel velocity PID in rads/second
+        '''
+        if len(self.left_wheel_history) > self._wheel_vel_hist_length:
+            self.left_wheel_history.popleft()
+        self.left_wheel_history.append(msg.left_wheel)
+
+        if len(self.right_wheel_history) > self._wheel_vel_hist_length:
+            self.right_wheel_history.popleft()
+        self.right_wheel_history.append(msg.right_wheel)
+
+        if len(self.left_wheel_history) < self._wheel_vel_hist_length//2:
+            return
+
+        if len(self.right_wheel_history) < self._wheel_vel_hist_length//2:
+            return
+
+        # Approximate angular velocity
+        left_dTerm = np.average(np.diff(self.left_wheel_history))
+        left_iTerm = np.trapz(self.left_wheel_history)
+        right_dTerm = np.average(np.diff(self.right_wheel_history))
+        right_iTerm = np.trapz(self.right_wheel_history)
+
+        # PID Gains, play with these if the robot jitters
+        p_gain = .7
+        d_gain = 0.3
+        i_gain = 0.01
+        correction_const = 1.0
+
+        left_tau = (p_gain * (self.des_left_vel - msg.left_wheel)) + (d_gain * left_dTerm) + (i_gain * left_iTerm)
+        desired_left = self.des_left_vel + (correction_const * left_tau)
+
+        right_tau = (p_gain * (self.des_right_vel - msg.right_wheel)) + (d_gain * right_dTerm) + (i_gain * right_iTerm)
+        desired_right = self.des_right_vel + (correction_const * right_tau)
+
+        if (desired_left > 1.0):
+            desired_left = 1.0
+        elif (desired_left < -1.0):
+            desired_left = -1.0
+
+        if (desired_right > 1.0):
+            desired_right = 1.0
+        elif (desired_right < -1.0):
+            desired_right = -1.0
+
+        print "desired_left: ", desired_left
+        print "desired_right: ", desired_right
+
+        self.send_wheel_vel((desired_right * 100), (desired_left * 100))
+        #self.left_vel = (desired_left * 100)
+        #self.right_vel = (desired_right * 100)
 
     def change_state(self, msg):
         '''
@@ -246,7 +297,7 @@ if __name__=='__main__':
             controller.run()
 
             # Wait a bit
-            rospy.sleep(0.2)
+            rospy.sleep(0.1)
         except rospy.ROSInterruptException:
             exit()
         

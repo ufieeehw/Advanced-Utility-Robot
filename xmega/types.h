@@ -42,7 +42,6 @@ DO NOT have inline comments on a line with a #define statement if they are not f
 //DATA_2B_TYPE messages [0x80-0xAF]
 #define TOWBOT_TYPE           0x80 // out: motor
 
-
 //DATA_NB_TYPE messages [0xC0-0xEF]
 #define DECODER_DATA_TYPE		0xEE // in: decoder_data
 #define SONAR_DATA_TYPE         0xEF // in: sonar_data
@@ -68,4 +67,5 @@ DO NOT have inline comments on a line with a #define statement if they are not f
 /* TODO: FILL IN TYPES */
 
 #endif
+
 

@@ -112,7 +112,7 @@ class Xmega_Driver(object):
         left_wheel_char = chr(int(msg.left_wheel))
         right_wheel_char = chr(int(msg.right_wheel))
         message_data = right_wheel_char + left_wheel_char
-        self.serial_proxy.add_message('motor_speed', message_data)
+        self.serial_proxy.add_message('motor', message_data)
 
     def got_xmega_error(self, msg_data):
         print("Got error,", msg_data)
@@ -163,11 +163,11 @@ class Xmega_Driver(object):
     def got_decoder_data(self, msg_data):
         '''
         TODO: Put userful information here
-        data is published in meters per second
+        data is published in radians per second
         '''
         msg = Decoder_Data(
-            left_wheel = (((struct.unpack(">h", msg_data[1] + msg_data[0])[0])) / 360) * 0.32766 * np.pi,
-            right_wheel = (((struct.unpack(">h", msg_data[3] + msg_data[2])[0])) / 360) * 0.32766 * np.pi
+            left_wheel = abs(((struct.unpack(">h", msg_data[1] + msg_data[0])[0])) / 360) * 0.0174532925,
+            right_wheel = abs(((struct.unpack(">h", msg_data[3] + msg_data[2])[0])) / 360) * 0.0174532925
         )
 
         self.decoder_data_pub.publish(msg)
