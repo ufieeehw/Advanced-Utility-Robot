@@ -65,7 +65,7 @@ class Controller(object):
         self.left_vel = 0
         self.right_vel = 0
         self.des_left_vel = 0
-        self.des_right_vel = .5
+        self.des_right_vel = 0
 
         # ROS Subscribers
         self.state_sub = rospy.Subscriber('milaur/state', Int16, self.change_state)
@@ -91,9 +91,11 @@ class Controller(object):
                           (-pi or pi)
         '''
 
+        
         # If we're not ready, continually send a motor stop message
         if len(self.targ_angle_history) < self._targ_angle_hist_length//2:
-            #self.send_wheel_vel(0, 0)
+            self.des_left_vel = 0;
+            self.des_right_vel = 0;
             d = rospy.Duration(2, 0)
             rospy.sleep(d)
             print "Logging target angle"
@@ -101,25 +103,26 @@ class Controller(object):
 
         if self.state == 1:
             # Don't do anything here. Vision will change to state 2.
-            #self.send_wheel_vel(0, 0)
-            pass
+            self.send_wheel_vel(0, 0)
+            return
 
         elif self.state == 2:
             # PID Control
             # Angle error
             angle_error = self.target_angle
-            right_wheel_vel = 0
-            left_wheel_vel = 0
+            #right_wheel_vel = 0
+            #left_wheel_vel = 0
 
-            if np.abs(angle_error) > np.radians(5):
+            if np.abs(angle_error) > np.radians(6):
+                '''
                 # Approximate angular velocity
                 angular_velocity = np.average(np.diff(self.targ_angle_history))
                 angular_integral = np.trapz(self.targ_angle_history)
 
                 # PID Gains, play with these if the robot jitters
-                p_gain = 20 # 0.7
-                d_gain = 10 # 0.3
-                i_gain = 0.5 # .01
+                p_gain = .95
+                d_gain = 0.3
+                i_gain = .01
                 correction_const = 1.0
 
                 # A positive angle error should induce a positive turn, and the opposite
@@ -127,15 +130,24 @@ class Controller(object):
                 desired_torque = correction_const * tau
 
                 #self.send_wheel_vel(desired_torque, -desired_torque)
-                right_wheel_vel = desired_torque
-                left_wheel_vel = -desired_torque
-                print "Making a turn with a controller effort of ", desired_torque 
-            else:
-                right_wheel_vel = 0
-                left_wheel_vel = 0
-                print "Going forward"
+                self.des_right_vel = -desired_torque
+                self.des_left_vel = desired_torque
+                print "Making a turn with a controller effort of ", desired_torque
+                '''
+                if angle_error > 0:
+                    self.des_left_vel = .2
+                    self.des_right_vel = -.2
+                elif angle_error <0:
+                    self.des_left_vel = -.2
+                    self.des_right_vel = .2
 
-        #self.send_wheel_vel(self.left_vel, self.right_vel)
+                self.send_wheel_vel(self.left_vel, self.right_vel)
+            else:
+                self.send_wheel_vel(0, 0)
+                print "Going forward"
+        else:
+            self.send_wheel_vel(0, 0)
+        
 
         '''
             # Proportional control for forward velocity
@@ -253,7 +265,7 @@ class Controller(object):
         right_iTerm = np.trapz(self.right_wheel_history)
 
         # PID Gains, play with these if the robot jitters
-        p_gain = .7
+        p_gain = .5
         d_gain = 0.3
         i_gain = 0.01
         correction_const = 1.0
@@ -277,9 +289,9 @@ class Controller(object):
         print "desired_left: ", desired_left
         print "desired_right: ", desired_right
 
-        self.send_wheel_vel((desired_right * 100), (desired_left * 100))
-        #self.left_vel = (desired_left * 100)
-        #self.right_vel = (desired_right * 100)
+        #self.send_wheel_vel((desired_left * 100), (desired_right * 100))
+        self.left_vel = (desired_left * 100)
+        self.right_vel = (desired_right * 100)
 
     def change_state(self, msg):
         '''
